@@ -1,0 +1,4 @@
+([('JerkSimulator',
+   '/Users/mac2019/Documents/050 - Otros/400 - Linux/00 - '
+   'Proyectos/Apps_Mac/JerkSimulador/dist/JerkSimulator',
+   'EXECUTABLE')],)
