@@ -17,6 +17,6 @@ It also has a simulator to verify if the movement is as expected.
 
 > Equations: https://hidraulica.fluidas.ro/wp-content/uploads/07-25.pdf
 
-The executables are in the Executable Files folder
+The executables are in the **Executable Files** folder
 
 Language: English
