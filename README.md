@@ -40,8 +40,8 @@ This project was created to solve `<graphically understand what is happening wit
 
 **Set the parameters to be controlled:**  
 1. Distance, speed, acceleration, deceleration, and jerk are essential.  
-2. Pressing <u>Simulate</u> will graph how the movement behaves with respect to time.
-3. There is also a <u>Linear motion animated</u> simulator to see how the object moves with those values.
+2. Pressing ***Simulate*** will graph how the movement behaves with respect to time.
+3. There is also a ***Linear motion animated*** simulator to see how the object moves with those values.
 
 ---
 
