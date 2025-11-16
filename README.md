@@ -31,7 +31,7 @@ This project was created to solve `<graphically understand what is happening wit
 
 ## 🖼 Screenshots
 <p align="center">
-  <img src="assets/IMG01.JPG" alt="Main screen" width="500">
+  <img src="assets/IMG01.JPG" alt="Main screen" width="600">
 </p>
 
 ---
