@@ -1,4 +1,5 @@
 
+
 # JerkSimulator
 
 > Simulator for finding optimal speed parameters.  
@@ -7,14 +8,14 @@
 
 ## 📖 About the project
 
-`JerkSimulator` is a tool designed to `<show how the movement will behave graphically according to the applied parameters>`.  
+`JerkSimulator` is a tool designed to `show how the movement will behave graphically according to the applied parameters`.  
 
 Some example uses:
 
 - Avoid excessive or unnecessary values.
 - Avoid alarms in inverters.
 
-This project was created to solve `<graphically understand what is happening with speeds, accelerations, and jerk>`, for example:
+This project was created to solve `graphically understand what is happening with speeds, accelerations, and jerk`, for example:
 
 > *“Some frequency converters go into alarm due to excessive ramps.”*
 
