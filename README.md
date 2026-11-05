@@ -4,11 +4,15 @@
 
 JerkSimulator is a single-file HTML5 simulator for validated industrial motion profiles. It calculates jerk-limited S-curves, classic linear ramps, and hybrid profiles.
 
-## Live application:
+## Live application
+
 [https://firerayo.github.io/JerkSimulator/](https://firerayo.github.io/JerkSimulator/)
 
-Direct source and download:
-[https://raw.githubusercontent.com/FireRayo/JerkSimulator/main/index.html](https://raw.githubusercontent.com/FireRayo/JerkSimulator/main/index.html)
+## Screenshot
+
+![JerkSimulator application interface screenshot](assets/Screenshot.JPG)
+
+The repository screenshot shows the application interface and can reflect an earlier layout revision.
 
 ## Features
 
@@ -24,7 +28,7 @@ Direct source and download:
 - Validate distance, speed, acceleration, deceleration, jerk, and final solver residuals.
 - Show synchronized Position, Velocity, Acceleration, and Jerk graphs.
 - Inspect graphs with a synchronized cursor, zoom, pan, and segment boundaries.
-- Overlay the previous simulation and clear the stored comparison when required.
+- Overlay the previous simulation and clear the stored comparison.
 - Animate the exact calculated position `x(t)` with Play, Stop, Speed, and Repeat controls.
 - Export high-precision CSV data with profile metadata.
 - Print the interface and graphs or save them as PDF through the browser print dialog.
@@ -79,15 +83,19 @@ GitHub links require a network connection only when you open them.
 
 The readable `index.html` file is the application source. No compilation step is required.
 
-Static verification of V4.3.2 confirmed no external runtime scripts, stylesheets, or `fetch()` calls. The executable JavaScript also passed a syntax check with `node --check`.
+Static inspection of V4.3.2 confirmed no required external runtime scripts or stylesheets. The application includes the complete GPLv3 text for offline access.
 
-No third-party runtime components were identified during this source inspection.
+The repository contains `assets/Screenshot.JPG`. The screenshot is a valid JPEG, but its visible layout does not match every V4.3.2 interface placement.
+
+## Contributing and support
 
 Repository:
 https://github.com/FireRayo/JerkSimulator/
 
 Issues:
 https://github.com/FireRayo/JerkSimulator/issues
+
+Use GitHub Issues to report reproducible problems or propose changes.
 
 ## License and credits
 
