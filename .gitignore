@@ -1,0 +1,23 @@
+# macOS - Finder metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# macOS - Resource forks and metadata
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.DocumentRevisions-V100
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# macOS - Temporary files
+*.swp
+*.swo
+*~

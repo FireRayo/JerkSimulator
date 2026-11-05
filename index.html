@@ -1,410 +1,1009 @@
+<!--
+JerkSimulator — Offline jerk-limited S-curve and linear-ramp motion profile simulator
+
+Copyright (C) 2026 Raymundo Ortiz
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This program is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License
+for more details.
+
+You should have received a copy of the GNU General
+Public License along with this program.
+If not, see <https://www.gnu.org/licenses/>.
+
+Third-party components retain their original copyright
+notices and licenses. This copyright statement does not
+claim ownership of third-party code.
+-->
+<!--
+PROJECT REQUIREMENTS — DO NOT REMOVE
+
+Aplicación: JerkSimulator
+Autor del código original: Raymundo Ortiz
+Versión: V4.3.2
+Licencia: GNU GPL version 3 or later (SPDX: GPL-3.0-or-later)
+Repositorio: https://github.com/FireRayo/JerkSimulator/
+
+Restricciones técnicas permanentes:
+- Un único archivo HTML5 autocontenido para ejecución; HTML5 + CSS3 + JavaScript puro.
+- Funciones esenciales 100% offline y compatibles con file:// en navegadores modernos.
+- Sin CDN, frameworks, fuentes remotas, APIs obligatorias ni recursos externos de ejecución.
+- Interfaz Neomorphism / Soft UI con temas Light y Dark y las paletas exactas del Prompt Maestro V1.2.
+- i18n completo: en (predeterminado), es, it, pt-BR; preferencias persistentes cuando localStorage está disponible.
+- Texto visible en inglés redactado con principios de claridad ASD-STE100; traducciones equivalentes claras y técnicas.
+- Comentarios internos de desarrollo en español; nombres de funciones, variables, IDs y estructuras en inglés.
+- About con metadatos centralizados y acceso offline al texto completo GPLv3 embebido.
+- La física usa solución analítica exacta por segmentos, no integración Euler.
+- Se conservan comparación de corridas, cursor sincronizado, zoom/pan, animación, muestreo adaptativo y CSV de alta precisión.
+- El menú superior de gráficas contiene Language, Theme, Print to PDF y About, en ese orden.
+- Las herramientas de comparación/zoom se ubican al final de la columna izquierda de controles.
+- Los controles Play, Stop y Speed de la animación usan una distribución amplia, centrada y uniforme.
+- Las dos columnas principales participan en el mismo desplazamiento vertical de la página; ninguna columna usa posicionamiento sticky.
+
+Convención de Jerk = 0 incorporada en V4.1.0:
+- Un límite de jerk igual a 0 NO representa da/dt = 0 durante una transición de aceleración.
+- En la interfaz significa «S-curve smoothing disabled» para esa transición, equivalente al perfil clásico de rampa lineal de velocidad.
+- La aceleración cambia instantáneamente en esa frontera y el jerk matemático es un impulso ideal no acotado (±∞).
+- Entre cambios instantáneos, jerk = 0 y la aceleración es constante.
+- En modo independiente, cada Ji puede ser 0 de forma individual, produciendo un perfil híbrido.
+
+Componentes de terceros incluidos: ninguno.
+El texto íntegro GNU GPLv3 se incluye como dato no ejecutable y conserva su redacción oficial.
+-->
+
+<!--
+CHANGELOG — VERSION HISTORY
+
+V1.0
+- Primera versión: perfil S-curve de 7 tramos, integración temporal, gráficas, animación y CSV.
+
+V2.0
+- Sustitución de Euler por propagación polinómica exacta por tramo.
+- Muestreo separado de la exactitud física; mejoras de gráficas y comparación.
+
+V2.1
+- Modos Single jerk e Independent jerks.
+- Velocidades V0/Vf, cursor sincronizado, zoom/pan y mejoras de exportación.
+
+V2.2
+- Validación explícita de límites y residuo del solver.
+- Muestreo adaptativo, CSV de precisión completa, fronteras temporales robustas y optimización de renderizado/animación.
+
+V4.0
+- Identificación de la rama validada como versión V4.0.
+
+V4.1.0
+- Jerk = 0 ahora selecciona una transición de rampa lineal ideal con salto instantáneo de aceleración.
+- Soporte de perfiles trapezoidales completos e híbridos por Ji independiente.
+- Gráfica de aceleración con discontinuidades verticales exactas y gráfica de jerk con impulsos ideales ±∞.
+- Añadidos temas Light/Dark Neomorphism, i18n en/es/it/pt-BR, metadatos centralizados, About ampliado y GPLv3 íntegra offline.
+- Añadido registro permanente de requisitos y changelog conforme al Prompt Maestro V1.2.
+
+V4.2.0
+- Valores predeterminados actualizados: S=2000 mm, Vmax=500 mm/s, Amax=Dmax=300 mm/s², jerk=500 mm/s³, V0=Vf=0 y 1000 muestras.
+- La aplicación calcula y muestra automáticamente las gráficas del perfil predeterminado al abrirse.
+- Velocidades de frontera y muestreo movidos a un panel avanzado colapsable, cerrado por defecto.
+- Métricas visibles y resumen de segmentos limitados a 2 decimales; el CSV conserva precisión completa.
+- Nombre JerkSimulator normalizado en metadatos, interfaz y nombre del archivo CSV exportado.
+
+V4.3.0
+- Menú superior de gráficas reorganizado con About, Language, Theme y Print to PDF.
+- Herramientas de comparación, borrado de corrida anterior, reset de zoom y ayuda de interacción movidas a una tarjeta final debajo de la animación.
+- Botones Simulate, Reset y Export CSV ampliados, centrados y distribuidos uniformemente en todo el ancho del panel de control.
+- Añadidos estilos de impresión para optimizar la salida mediante el diálogo nativo Print / Save as PDF del navegador.
+
+V4.3.1
+- Eliminado el posicionamiento sticky de la columna izquierda.
+- Ambas columnas principales ahora se desplazan juntas verticalmente con la página.
+- Se permite que cada columna termine a una altura diferente sin intentar mantener alineados sus bordes inferiores.
+
+V4.3.2
+- Reordenado el menú superior: Language, Theme, Print to PDF y About.
+- La sección Chart comparison and view tools se movió al final de la columna izquierda.
+- Los controles Play, Stop y Speed de la animación se ampliaron, centraron y distribuyeron uniformemente.
+- El control Repeat se conserva y queda centrado dentro del grupo de controles de animación.
+-->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta property="og:title" content="JerkSimulator" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JerkSimulator — Exact S-curve Motion Profile</title>
-  <style>
-    :root {
-      --bg: #0b0f14;
-      --panel: #121822;
-      --panel-2: #0f141c;
-      --text: #e6eef7;
-      --muted: #9ab0c0;
-      --accent: #3aa0ff;
-      --ok: #2ecc71;
-      --warn: #f1c40f;
-      --err: #e74c3c;
-      --grid: #1e2633;
-      --card-radius: 16px;
-      --shadow: 0 10px 24px rgba(0,0,0,.35);
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      min-height: 100%;
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Helvetica Neue, Arial, "Noto Sans", sans-serif;
-    }
-    h1 { font-size: 1.6rem; margin: 0 0 6px; letter-spacing: .2px; }
-    h2 { font-size: 1.05rem; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
-    h3 { font-size: .92rem; color: var(--text); margin: 10px 0 8px; }
-
-    .wrap {
-      max-width: 1380px;
-      margin: 24px auto;
-      padding: 0 16px;
-      display: grid;
-      grid-template-columns: 390px 1fr;
-      gap: 18px;
-      align-items: start;
-    }
-    .card {
-      background: linear-gradient(180deg, var(--panel), var(--panel-2));
-      border: 1px solid #1b2533;
-      border-radius: var(--card-radius);
-      box-shadow: var(--shadow);
-      padding: 16px;
-    }
-    .sticky { position: sticky; top: 16px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .grid { display: grid; gap: 12px; }
-    .section-divider { border-top: 1px solid #1b2533; margin: 4px 0 0; padding-top: 4px; }
-    label { font-size: .86rem; color: var(--muted); display: block; margin-bottom: 4px; }
-    input[type="number"] {
-      width: 100%;
-      background: #0c121a;
-      color: var(--text);
-      border: 1px solid #273247;
-      border-radius: 10px;
-      padding: 9px 10px;
-      font-size: .95rem;
-      outline: none;
-      transition: box-shadow .2s, border-color .2s;
-    }
-    input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(58,160,255,.15); }
-
-    .mode-switch {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      padding: 5px;
-      background: #0c121a;
-      border: 1px solid #233048;
-      border-radius: 12px;
-    }
-    .mode-option {
-      position: relative;
-      display: block;
-      margin: 0;
-      cursor: pointer;
-      user-select: none;
-    }
-    .mode-option input {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-    }
-    .mode-option span {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 38px;
-      padding: 8px 10px;
-      border: 1px solid transparent;
-      border-radius: 9px;
-      color: var(--muted);
-      font-size: .84rem;
-      font-weight: 650;
-      text-align: center;
-      transition: background .15s, border-color .15s, color .15s;
-    }
-    .mode-option input:checked + span {
-      background: #172337;
-      border-color: #35557d;
-      color: var(--text);
-    }
-    .mode-option input:focus-visible + span {
-      box-shadow: 0 0 0 3px rgba(58,160,255,.15);
-    }
-    .jerk-panel {
-      background: rgba(12,18,26,.45);
-      border: 1px solid #1f2a3b;
-      border-radius: 12px;
-      padding: 10px;
-    }
-    .jerk-note { margin-top: 7px; color: var(--muted); font-size: .78rem; line-height: 1.35; }
-    [hidden] { display: none !important; }
-
-    .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items:center; }
-    button {
-      border: 0;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-weight: 600;
-      cursor: pointer;
-      color: #0c121a;
-      background: var(--accent);
-      box-shadow: var(--shadow);
-    }
-    button.secondary { background: #2b384d; color: var(--text); }
-    button.ghost { background: transparent; color: var(--muted); border: 1px dashed #33425b; box-shadow: none; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-
-    .chart-toolbar {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      padding: 12px 14px;
-    }
-    .chart-toolbar .hint { color: var(--muted); font-size: .82rem; margin-left: auto; }
-    .chart-card { padding: 8px 8px 12px; }
-    canvas {
-      width: 100%;
-      height: 250px;
-      display: block;
-      background: #0a0f16;
-      border-radius: 12px;
-      border: 1px solid #1c2636;
-      touch-action: none;
-    }
-
-    .badge {
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-      background: #0e1621;
-      border: 1px solid #233048;
-      color: var(--muted);
-      padding: 8px 10px;
-      border-radius: 12px;
-      font-size: .82rem;
-    }
-    .kvs { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 8px; }
-    .kv { background: #0c121a; border: 1px solid #233048; border-radius: 10px; padding: 8px 10px; min-width: 0; }
-    .kv .k { color: var(--muted); font-size: .76rem; }
-    .kv .v { font-weight: 700; font-size: .98rem; overflow-wrap: anywhere; }
-
-    .segments { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-top: 8px; }
-    .segment-chip { background: #0c121a; border: 1px solid #233048; border-radius: 9px; padding: 7px 8px; }
-    .segment-chip .n { color: var(--muted); font-size: .72rem; }
-    .segment-chip .d { font-size: .85rem; font-weight: 650; margin-top: 2px; }
-
-    .footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); font-size: .9rem; }
-    .spinner { display:none; gap:10px; align-items:center; margin-top: 10px; }
-    .spinner.on { display:flex; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: bounce 1s infinite ease-in-out; }
-    .dot:nth-child(2){ animation-delay:.15s }
-    .dot:nth-child(3){ animation-delay:.3s }
-    @keyframes bounce { 0%,80%,100%{ transform: scale(0.8); opacity:.6 } 40%{ transform: scale(1.2); opacity:1 } }
-
-    .warn { color: var(--warn); }
-    .err  { color: var(--err); }
-    .ok   { color: var(--ok); }
-    .muted { color: var(--muted); }
-    .grow { flex: 1 1 auto; }
-    .check { display:inline-flex; gap:6px; align-items:center; user-select:none; color: var(--muted); font-size: .88rem; }
-    .check input { width: 16px; height: 16px; }
-    a { color: var(--accent); text-decoration: none; }
-
-    dialog#aboutDialog {
-      border: 1px solid #233048;
-      background: linear-gradient(180deg, var(--panel), var(--panel-2));
-      color: var(--text);
-      border-radius: 12px;
-      padding: 16px 16px 12px;
-      box-shadow: var(--shadow);
-      max-width: 590px;
-    }
-    dialog#aboutDialog::backdrop { background: rgba(0,0,0,.5); }
-
-    #motionCanvas { height: 150px; }
-    code { background: #0c121a; border: 1px solid #233048; border-radius: 5px; padding: 1px 5px; }
-
-    @media (max-width: 980px) {
-      .wrap { grid-template-columns: 1fr; }
-      .sticky { position: static; }
-    }
-    @media (max-width: 520px) {
-      .row, .kvs, .segments { grid-template-columns: 1fr; }
-      .chart-toolbar .hint { margin-left: 0; width: 100%; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta property="og:title" content="JerkSimulator">
+<meta name="description" content="Offline validated S-curve and linear-ramp motion profile simulator.">
+<title>JerkSimulator V4.3.2</title>
+<style>
+:root, html[data-theme="dark"] {
+  --bg: #20252B; --surface: #272C33; --shadow-light: #323841; --shadow-dark: #181C21;
+  --text: #E6EAF0; --text-muted: #9CA6B2; --accent-light: #739DF2; --accent: #5C7FD6; --accent-dark: #4868B8;
+  --ok: #6CBF8A; --warn: #D6A85C; --err: #D97979; --radius: 16px;
+}
+html[data-theme="light"] {
+  --bg: #DFE4EA; --surface: #E5E9EE; --shadow-light: #FFFFFF; --shadow-dark: #C2C6CA;
+  --text: #30363B; --text-muted: #687078; --accent-light: #6C9EFF; --accent: #557BD9; --accent-dark: #526FC0;
+  --ok: #3D8B62; --warn: #9B6B27; --err: #A44E4E;
+}
+*{box-sizing:border-box} html,body{min-height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,Arial,sans-serif}
+body{transition:background .2s,color .2s} h1{font-size:1.58rem;margin:0 0 5px} h2{font-size:1rem;margin:0 0 10px;color:var(--text-muted);font-weight:650} h3{font-size:.92rem;margin:10px 0 8px}
+.wrap{max-width:1380px;margin:22px auto;padding:0 16px;display:grid;grid-template-columns:400px 1fr;gap:20px;align-items:start}.grid{display:grid;gap:14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card,.soft-panel{background:var(--surface);border:0;border-radius:var(--radius);box-shadow:8px 8px 16px var(--shadow-dark),-8px -8px 16px var(--shadow-light);padding:16px}.soft-panel{box-shadow:inset 3px 3px 7px var(--shadow-dark),inset -3px -3px 7px var(--shadow-light);padding:10px}
+.top-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}.compact-field label{margin-bottom:4px}.section-divider{height:1px;margin:4px 4px 0;background:var(--shadow-dark);opacity:.35}
+.top-menu{padding:13px 14px}.top-menu .utility-button{width:100%;min-height:42px}.top-menu .compact-field{min-width:0}.top-menu select{min-height:42px}
+.main-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.main-actions button{width:100%;min-height:50px;padding:12px 10px;text-align:center;justify-content:center;font-size:clamp(.9rem,1.25vw,1.02rem)}
+.motion-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px;align-items:stretch}.motion-actions button{width:100%;min-height:50px;padding:12px 10px;text-align:center;justify-content:center;font-size:clamp(.9rem,1.25vw,1.02rem)}.speed-control{min-height:50px;padding:8px 12px;border-radius:12px;background:var(--surface);box-shadow:inset 3px 3px 7px var(--shadow-dark),inset -3px -3px 7px var(--shadow-light);display:flex;align-items:center;justify-content:center;gap:10px;min-width:0}.speed-control label{margin:0;white-space:nowrap;font-weight:700}.speed-control input[type="range"]{width:100%;min-width:90px}.motion-repeat{grid-column:1/-1;justify-self:center;margin-top:1px}
+.comparison-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px}.comparison-toolbar h2{width:100%;margin:0 0 2px}.comparison-toolbar .hint{color:var(--text-muted);font-size:.8rem;margin-left:auto}.left-comparison{margin-top:14px}.left-comparison .hint{margin-left:0;width:100%;line-height:1.35}
+label{font-size:.84rem;color:var(--text-muted);display:block;margin-bottom:4px} input[type="number"],select{width:100%;background:var(--surface);color:var(--text);border:0;border-radius:11px;padding:9px 10px;font-size:.94rem;outline:none;box-shadow:inset 3px 3px 7px var(--shadow-dark),inset -3px -3px 7px var(--shadow-light)} input:focus,select:focus{outline:2px solid var(--accent-light);outline-offset:1px}
+.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:6px;background:var(--surface);border-radius:13px;box-shadow:inset 3px 3px 7px var(--shadow-dark),inset -3px -3px 7px var(--shadow-light)}.mode-option{position:relative;margin:0;cursor:pointer}.mode-option input{position:absolute;opacity:0}.mode-option span{display:flex;align-items:center;justify-content:center;min-height:38px;padding:8px;border-radius:10px;color:var(--text-muted);font-size:.84rem;font-weight:700}.mode-option input:checked+span{color:var(--text);background:var(--surface);box-shadow:4px 4px 8px var(--shadow-dark),-4px -4px 8px var(--shadow-light)}
+.jerk-panel{background:var(--surface);border-radius:12px;padding:10px;box-shadow:inset 3px 3px 7px var(--shadow-dark),inset -3px -3px 7px var(--shadow-light)}
+.advanced-details{margin-top:4px;border-radius:12px;background:var(--surface);box-shadow:inset 2px 2px 5px var(--shadow-dark),inset -2px -2px 5px var(--shadow-light);overflow:hidden}
+.advanced-details summary{cursor:pointer;list-style:none;padding:11px 12px;color:var(--text);font-size:.9rem;font-weight:700;user-select:none;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.advanced-details summary::-webkit-details-marker{display:none}.advanced-details summary::after{content:'▸';color:var(--accent);font-size:1rem;transition:transform .15s}.advanced-details[open] summary::after{transform:rotate(90deg)}
+.advanced-details .advanced-content{padding:2px 10px 11px;display:grid;gap:10px}
+.advanced-details[open] summary{color:var(--accent)}
+.note{margin-top:7px;color:var(--text-muted);font-size:.77rem;line-height:1.38}.zero-note{border-left:3px solid var(--accent);padding-left:9px;margin-top:9px}[hidden]{display:none!important}
+.actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center}.grow{flex:1 1 auto}button{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;color:var(--text);background:var(--surface);box-shadow:4px 4px 9px var(--shadow-dark),-4px -4px 9px var(--shadow-light);transition:transform .08s,box-shadow .08s,color .15s}button:hover{color:var(--accent)}button:active{transform:translateY(1px);box-shadow:inset 3px 3px 7px var(--shadow-dark),inset -3px -3px 7px var(--shadow-light)}button.primary{color:#fff;background:var(--accent);box-shadow:4px 4px 9px var(--shadow-dark),-3px -3px 8px var(--shadow-light)}button:disabled{opacity:.45;cursor:not-allowed}
+.chart-card{padding:10px}.chart-card h2{color:var(--text);margin:2px 4px 9px}.chart-note{font-size:.77rem;color:var(--text-muted);margin:8px 7px 1px}
+canvas{width:100%;height:250px;display:block;background:var(--surface);border:0;border-radius:12px;box-shadow:inset 4px 4px 9px var(--shadow-dark),inset -4px -4px 9px var(--shadow-light);touch-action:none}.kvs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.kv,.segment-chip{background:var(--surface);border-radius:10px;padding:8px 10px;box-shadow:inset 2px 2px 5px var(--shadow-dark),inset -2px -2px 5px var(--shadow-light);min-width:0}.kv .k,.segment-chip .n{color:var(--text-muted);font-size:.74rem}.kv .v{font-weight:750;font-size:.96rem;overflow-wrap:anywhere}.segments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}.segment-chip .d{font-size:.82rem;font-weight:650;margin-top:2px}
+.footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}.badge{display:inline-flex;align-items:center;color:var(--text-muted);font-size:.79rem}.spinner{display:none;gap:9px;align-items:center;margin-top:10px;color:var(--text-muted);font-size:.86rem}.spinner.on{display:flex}.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:bounce 1s infinite ease-in-out}.dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}@keyframes bounce{0%,80%,100%{transform:scale(.8);opacity:.55}40%{transform:scale(1.2);opacity:1}}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}.muted{color:var(--text-muted)}.check{display:inline-flex;gap:7px;align-items:center;color:var(--text-muted);font-size:.86rem;user-select:none}.check input{width:16px;height:16px;accent-color:var(--accent)}input[type="range"]{accent-color:var(--accent)}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+#motionCanvas{height:150px}dialog{border:0;background:var(--surface);color:var(--text);border-radius:16px;padding:18px;box-shadow:10px 10px 22px var(--shadow-dark),-8px -8px 18px var(--shadow-light);max-width:620px}dialog::backdrop{background:rgba(0,0,0,.46)}.about-grid{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:.9rem}.about-grid .k{color:var(--text-muted)}#licenseDialog{width:min(920px,94vw);max-width:920px}#licenseText{max-height:66vh;overflow:auto;white-space:pre-wrap;font:12px/1.42 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--surface);color:var(--text);padding:14px;border-radius:12px;box-shadow:inset 3px 3px 7px var(--shadow-dark),inset -3px -3px 7px var(--shadow-light)}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}.top-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.row,.kvs,.segments,.top-controls,.main-actions,.motion-actions{grid-template-columns:1fr}.motion-repeat{grid-column:1}.comparison-toolbar .hint{margin-left:0;width:100%}}
+@media print{
+  :root,html[data-theme="dark"],html[data-theme="light"]{--bg:#fff;--surface:#fff;--text:#000;--text-muted:#444;--shadow-light:#fff;--shadow-dark:#fff}
+  body{background:#fff!important;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .wrap{display:block;max-width:none;margin:0;padding:0}.card{box-shadow:none!important;border:1px solid #bbb!important;margin:0 0 12px;break-inside:avoid}.top-menu,.comparison-toolbar,.main-actions,.motion-actions,.spinner,.footer button{display:none!important}
+  canvas{box-shadow:none!important;border:1px solid #bbb!important;break-inside:avoid;page-break-inside:avoid}.chart-card{break-inside:avoid;page-break-inside:avoid}dialog{display:none!important}
+}
+</style>
 </head>
+
 <body>
-  <div class="wrap">
+<div class="wrap">
+  <section class="card" id="controls">
+    <h1 data-i18n="app.title">JerkSimulator</h1>
+    <h2 data-i18n="app.subtitle"></h2>
+    <div class="note" data-i18n="units.note"></div>
 
-    <!-- Controls -->
-    <section class="card sticky" id="controls">
-      <h1>JerkSimulator (Exact S-curve)</h1>
-      <h2>7-segment jerk-limited motion profile. Internal kinematics are evaluated analytically, not with Euler integration.</h2>
+    <div class="grid">
+      <h3 data-i18n="section.motion"></h3>
+      <div class="row">
+        <div><label for="inDist" data-i18n="label.distance"></label><input type="number" id="inDist" min="0" step="1" value="2000"></div>
+        <div><label for="inVmax" data-i18n="label.vmax"></label><input type="number" id="inVmax" min="0" step="1" value="500"></div>
+      </div>
+      <div class="row">
+        <div><label for="inAmax" data-i18n="label.amax"></label><input type="number" id="inAmax" min="0" step="1" value="300"></div>
+        <div><label for="inDmax" data-i18n="label.dmax"></label><input type="number" id="inDmax" min="0" step="1" value="300"></div>
+      </div>
 
-      <div class="grid">
-        <h3>Motion constraints</h3>
-        <div class="row">
-          <div>
-            <label for="inDist">Target distance S [mm]</label>
-            <input type="number" id="inDist" min="0" step="1" value="5000" />
-          </div>
-          <div>
-            <label for="inVmax">Max speed Vmax [mm/s]</label>
-            <input type="number" id="inVmax" min="0" step="1" value="1500" />
-          </div>
+      <div class="section-divider"></div><h3 data-i18n="section.jerk"></h3>
+      <div class="mode-switch" role="radiogroup">
+        <label class="mode-option"><input type="radio" name="jerkMode" id="jerkModeSingle" value="single" checked><span data-i18n="mode.single"></span></label>
+        <label class="mode-option"><input type="radio" name="jerkMode" id="jerkModeIndependent" value="independent"><span data-i18n="mode.independent"></span></label>
+      </div>
+      <div class="jerk-panel" id="singleJerkPanel">
+        <label for="inJmax" data-i18n="label.jmax"></label><input type="number" id="inJmax" min="0" step="1" value="500">
+        <div class="note" data-i18n="note.jerkSingle"></div>
+      </div>
+      <div class="jerk-panel" id="independentJerkPanel" hidden>
+        <div class="row"><div><label for="inJ1" data-i18n="label.j1"></label><input type="number" id="inJ1" min="0" step="1" value="500"></div><div><label for="inJ2" data-i18n="label.j2"></label><input type="number" id="inJ2" min="0" step="1" value="500"></div></div>
+        <div class="row" style="margin-top:10px"><div><label for="inJ3" data-i18n="label.j3"></label><input type="number" id="inJ3" min="0" step="1" value="500"></div><div><label for="inJ4" data-i18n="label.j4"></label><input type="number" id="inJ4" min="0" step="1" value="500"></div></div>
+        <div class="note" data-i18n="note.jerkIndependent"></div>
+      </div>
+      <div class="note zero-note" data-i18n="note.jerkZero"></div>
+
+      <div class="section-divider"></div>
+      <details class="advanced-details" id="boundaryDetails">
+        <summary data-i18n="section.boundary"></summary>
+        <div class="advanced-content">
+          <div class="row"><div><label for="inV0" data-i18n="label.v0"></label><input type="number" id="inV0" min="0" step="1" value="0"></div><div><label for="inVf" data-i18n="label.vf"></label><input type="number" id="inVf" min="0" step="1" value="0"></div></div>
+          <div><label for="inSamples" data-i18n="label.samples"></label><input type="number" id="inSamples" min="200" max="5000" step="100" value="1000"></div>
         </div>
-        <div class="row">
-          <div>
-            <label for="inAmax">Max acceleration Amax [mm/s²]</label>
-            <input type="number" id="inAmax" min="0" step="1" value="1000" />
-          </div>
-          <div>
-            <label for="inDmax">Max deceleration Dmax [mm/s²]</label>
-            <input type="number" id="inDmax" min="0" step="1" value="1000" />
-          </div>
-        </div>
-
-        <div class="section-divider"></div>
-        <h3>Jerk limits</h3>
-        <div class="mode-switch" role="radiogroup" aria-label="Jerk limit mode">
-          <label class="mode-option">
-            <input type="radio" name="jerkMode" id="jerkModeSingle" value="single" checked />
-            <span>Single jerk</span>
-          </label>
-          <label class="mode-option">
-            <input type="radio" name="jerkMode" id="jerkModeIndependent" value="independent" />
-            <span>Independent jerks</span>
-          </label>
-        </div>
-
-        <div class="jerk-panel" id="singleJerkPanel">
-          <label for="inJmax">Max jerk j [mm/s³]</label>
-          <input type="number" id="inJmax" min="0" step="1" value="2000" />
-          <div class="jerk-note">Applied automatically to all four transitions: J1 = J2 = J3 = J4.</div>
-        </div>
-
-        <div class="jerk-panel" id="independentJerkPanel" hidden>
-          <div class="row">
-            <div>
-              <label for="inJ1">J1 accel ramp-up [mm/s³]</label>
-              <input type="number" id="inJ1" min="0" step="1" value="2000" />
-            </div>
-            <div>
-              <label for="inJ2">J2 accel ramp-down [mm/s³]</label>
-              <input type="number" id="inJ2" min="0" step="1" value="2000" />
-            </div>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <div>
-              <label for="inJ3">J3 decel ramp-in [mm/s³]</label>
-              <input type="number" id="inJ3" min="0" step="1" value="2000" />
-            </div>
-            <div>
-              <label for="inJ4">J4 decel ramp-out [mm/s³]</label>
-              <input type="number" id="inJ4" min="0" step="1" value="2000" />
-            </div>
-          </div>
-          <div class="jerk-note">Each S-curve transition can use a different jerk limit.</div>
-        </div>
-
-        <div class="section-divider"></div>
-        <h3>Boundary velocities & output sampling</h3>
-        <div class="row">
-          <div>
-            <label for="inV0">Initial speed V0 [mm/s]</label>
-            <input type="number" id="inV0" min="0" step="1" value="0" />
-          </div>
-          <div>
-            <label for="inVf">Final speed Vf [mm/s]</label>
-            <input type="number" id="inVf" min="0" step="1" value="0" />
-          </div>
-        </div>
-        <div>
-          <label for="inSamples">Plot / CSV samples (visual density only; does not affect physical accuracy)</label>
-          <input type="number" id="inSamples" min="200" max="5000" step="100" value="1200" />
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="btnRun">Simulate</button>
-        <button id="btnReset" class="secondary">Reset</button>
-        <button id="btnCSV" class="ghost" title="Export exact sampled data to CSV">Export CSV</button>
-      </div>
-
-      <div class="spinner" id="spinner"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span>Computing exact motion profile…</span>
-      </div>
-
-      <div id="msg" style="margin-top:8px"></div>
-      <div class="kvs" id="metrics" aria-live="polite"></div>
-      <div class="segments" id="segmentSummary" aria-live="polite"></div>
-
-      <div class="footer">
-        <span class="badge">Exact cubic state propagation per constant-jerk segment</span>
-        <button id="btnAboutCard" class="secondary" title="About this app">About</button>
-      </div>
-    </section>
-
-    <!-- Charts + animation -->
-    <section class="grid">
-      <div class="card chart-toolbar">
-        <label class="check"><input type="checkbox" id="chkCompare"><span>Overlay previous run</span></label>
-        <button id="btnClearCompare" class="ghost">Clear previous</button>
-        <button id="btnResetZoom" class="ghost">Reset zoom</button>
-        <span class="hint">Mouse: move = exact synchronized cursor · wheel = zoom · drag = pan · double-click = reset zoom</span>
-      </div>
-
-      <div class="card chart-card">
-        <h2>Position x(t) [mm]</h2>
-        <canvas id="chartX"></canvas>
-      </div>
-      <div class="card chart-card">
-        <h2>Velocity v(t) [mm/s]</h2>
-        <canvas id="chartV"></canvas>
-      </div>
-      <div class="card chart-card">
-        <h2>Acceleration a(t) [mm/s²]</h2>
-        <canvas id="chartA"></canvas>
-      </div>
-      <div class="card chart-card">
-        <h2>Jerk j(t) [mm/s³]</h2>
-        <canvas id="chartJ"></canvas>
-      </div>
-
-      <div class="card chart-card">
-        <h2>Linear motion (animated from exact x(t))</h2>
-        <canvas id="motionCanvas"></canvas>
-        <div class="actions" style="margin-top:10px">
-          <button id="btnToggle">Play</button>
-          <button id="btnStop" class="ghost">Stop</button>
-          <div class="grow"></div>
-          <label class="muted" for="speed">Speed ×<span id="speedVal">1.00</span></label>
-          <input type="range" id="speed" min="0.25" max="4" step="0.25" value="1" style="width:160px">
-          <label class="check" style="margin-left:8px">
-            <input type="checkbox" id="chkRepeat">
-            <span>Repeat</span>
-          </label>
-        </div>
-        <div class="kvs" style="margin-top:6px">
-          <div class="kv"><div class="k">t</div><div class="v" id="anim_t">0.000 s</div></div>
-          <div class="kv"><div class="k">x</div><div class="v" id="anim_x">0.000 mm</div></div>
-          <div class="kv"><div class="k">v</div><div class="v" id="anim_v">0.000 mm/s</div></div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <dialog id="aboutDialog">
-    <h3 style="margin:0 0 8px">JerkSimulator V2.1 — Exact S-curve Engine</h3>
-    <p style="margin:0 0 10px; color:var(--muted)">
-      Closed-form jerk-limited 7-segment motion profile with selectable single-jerk or independent-jerk limits, optional non-zero boundary velocities, synchronized inspection, comparison mode, exact animation and CSV export.
-    </p>
-    <p style="margin:0 0 12px">
-      <a href="https://github.com/FireRayo" target="_blank" rel="noopener">https://github.com/FireRayo</a>
-    </p>
-    <div style="text-align:right; margin-top:10px">
-      <button id="aboutClose" class="secondary">Close</button>
+      </details>
     </div>
-  </dialog>
 
+    <div class="main-actions"><button id="btnRun" class="primary" data-i18n="btn.simulate"></button><button id="btnReset" data-i18n="btn.reset"></button><button id="btnCSV" data-i18n="btn.export"></button></div>
+    <div class="spinner" id="spinner"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span data-i18n="spinner"></span></div>
+    <div id="msg" style="margin-top:9px"></div><div class="kvs" id="metrics" aria-live="polite"></div><div class="segments" id="segmentSummary" aria-live="polite"></div>
+    <div class="footer"><span class="badge" data-i18n="footer.exact"></span></div>
+    <div class="soft-panel comparison-toolbar left-comparison"><h2 data-i18n="section.chartTools"></h2><label class="check"><input type="checkbox" id="chkCompare"><span data-i18n="compare.overlay"></span></label><button id="btnClearCompare" data-i18n="btn.clearPrevious"></button><button id="btnResetZoom" data-i18n="btn.resetZoom"></button><span class="hint" data-i18n="charts.hint"></span></div>
+  </section>
+
+  <section class="grid">
+    <div class="card top-menu"><div class="top-controls">
+      <div class="compact-field"><label for="languageSelect" data-i18n="control.language"></label><select id="languageSelect"><option value="en">English</option><option value="es">Español</option><option value="it">Italiano</option><option value="pt-BR">Português (Brasil)</option></select></div>
+      <div class="compact-field"><label for="themeSelect" data-i18n="control.theme"></label><select id="themeSelect"><option value="light" data-i18n="theme.light"></option><option value="dark" data-i18n="theme.dark"></option></select></div>
+      <button id="btnPrintPDF" class="utility-button" data-i18n="btn.printPDF"></button>
+      <button id="btnAboutCard" class="utility-button" data-i18n="btn.about"></button>
+    </div></div>
+    <div class="card chart-card"><h2 data-i18n="chart.position"></h2><canvas id="chartX"></canvas></div>
+    <div class="card chart-card"><h2 data-i18n="chart.velocity"></h2><canvas id="chartV"></canvas></div>
+    <div class="card chart-card"><h2 data-i18n="chart.acceleration"></h2><canvas id="chartA"></canvas></div>
+    <div class="card chart-card"><h2 data-i18n="chart.jerk"></h2><canvas id="chartJ"></canvas><div id="jerkGraphNote" class="chart-note" hidden data-i18n="jerkGraph.impulseNote"></div></div>
+    <div class="card chart-card"><h2 data-i18n="chart.motion"></h2><canvas id="motionCanvas"></canvas><div class="motion-actions"><button id="btnToggle" class="primary" data-i18n="btn.play"></button><button id="btnStop" data-i18n="btn.stop"></button><div class="speed-control"><label class="muted" for="speed"><span data-i18n="label.speed"></span><span id="speedVal">1.00</span></label><input type="range" id="speed" min="0.25" max="4" step="0.25" value="1"></div><label class="check motion-repeat"><input type="checkbox" id="chkRepeat"><span data-i18n="label.repeat"></span></label></div><div class="kvs"><div class="kv"><div class="k">t</div><div class="v" id="anim_t">0.000 s</div></div><div class="kv"><div class="k">x</div><div class="v" id="anim_x">0.000 mm</div></div><div class="kv"><div class="k">v</div><div class="v" id="anim_v">0.000 mm/s</div></div></div></div>
+  </section>
+</div>
+
+<dialog id="aboutDialog"><h3 id="aboutTitle"></h3><p id="aboutDescription" class="muted"></p><div class="about-grid"><div class="k" data-i18n="about.application"></div><div id="aboutApplication"></div><div class="k" data-i18n="about.author"></div><div id="aboutAuthor"></div><div class="k" data-i18n="about.version"></div><div id="aboutVersion"></div><div class="k" data-i18n="about.github"></div><div><a id="aboutGithub" target="_blank" rel="noopener"></a></div><div class="k" data-i18n="about.license"></div><div id="aboutLicense"></div></div><div class="actions" style="justify-content:flex-end"><button id="btnViewLicense" data-i18n="btn.viewLicense"></button><button id="aboutClose" data-i18n="btn.close"></button></div></dialog>
+<dialog id="licenseDialog"><h3 data-i18n="license.title"></h3><pre id="licenseText"></pre><div class="actions" style="justify-content:flex-end"><button id="licenseClose" data-i18n="btn.close"></button></div></dialog>
+<script type="text/plain" id="gpl3-full-license">                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+                            Preamble
+
+  The GNU General Public License is a free, copyleft license for
+software and other kinds of works.
+
+  The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works.  By contrast,
+the GNU General Public License is intended to guarantee your freedom to
+share and change all versions of a program--to make sure it remains free
+software for all its users.  We, the Free Software Foundation, use the
+GNU General Public License for most of our software; it applies also to
+any other work released this way by its authors.  You can apply it to
+your programs, too.
+
+  When we speak of free software, we are referring to freedom, not
+price.  Our General Public Licenses are designed to make sure that you
+have the freedom to distribute copies of free software (and charge for
+them if you wish), that you receive source code or can get it if you
+want it, that you can change the software or use pieces of it in new
+free programs, and that you know you can do these things.
+
+  To protect your rights, we need to prevent others from denying you
+these rights or asking you to surrender the rights.  Therefore, you have
+certain responsibilities if you distribute copies of the software, or if
+you modify it: responsibilities to respect the freedom of others.
+
+  For example, if you distribute copies of such a program, whether
+gratis or for a fee, you must pass on to the recipients the same
+freedoms that you received.  You must make sure that they, too, receive
+or can get the source code.  And you must show them these terms so they
+know their rights.
+
+  Developers that use the GNU GPL protect your rights with two steps:
+(1) assert copyright on the software, and (2) offer you this License
+giving you legal permission to copy, distribute and/or modify it.
+
+  For the developers' and authors' protection, the GPL clearly explains
+that there is no warranty for this free software.  For both users' and
+authors' sake, the GPL requires that modified versions be marked as
+changed, so that their problems will not be attributed erroneously to
+authors of previous versions.
+
+  Some devices are designed to deny users access to install or run
+modified versions of the software inside them, although the manufacturer
+can do so.  This is fundamentally incompatible with the aim of
+protecting users' freedom to change the software.  The systematic
+pattern of such abuse occurs in the area of products for individuals to
+use, which is precisely where it is most unacceptable.  Therefore, we
+have designed this version of the GPL to prohibit the practice for those
+products.  If such problems arise substantially in other domains, we
+stand ready to extend this provision to those domains in future versions
+of the GPL, as needed to protect the freedom of users.
+
+  Finally, every program is threatened constantly by software patents.
+States should not allow patents to restrict development and use of
+software on general-purpose computers, but in those that do, we wish to
+avoid the special danger that patents applied to a free program could
+make it effectively proprietary.  To prevent this, the GPL assures that
+patents cannot be used to render the program non-free.
+
+  The precise terms and conditions for copying, distribution and
+modification follow.
+
+                       TERMS AND CONDITIONS
+
+  0. Definitions.
+
+  "This License" refers to version 3 of the GNU General Public License.
+
+  "Copyright" also means copyright-like laws that apply to other kinds of
+works, such as semiconductor masks.
+
+  "The Program" refers to any copyrightable work licensed under this
+License.  Each licensee is addressed as "you".  "Licensees" and
+"recipients" may be individuals or organizations.
+
+  To "modify" a work means to copy from or adapt all or part of the work
+in a fashion requiring copyright permission, other than the making of an
+exact copy.  The resulting work is called a "modified version" of the
+earlier work or a work "based on" the earlier work.
+
+  A "covered work" means either the unmodified Program or a work based
+on the Program.
+
+  To "propagate" a work means to do anything with it that, without
+permission, would make you directly or secondarily liable for
+infringement under applicable copyright law, except executing it on a
+computer or modifying a private copy.  Propagation includes copying,
+distribution (with or without modification), making available to the
+public, and in some countries other activities as well.
+
+  To "convey" a work means any kind of propagation that enables other
+parties to make or receive copies.  Mere interaction with a user through
+a computer network, with no transfer of a copy, is not conveying.
+
+  An interactive user interface displays "Appropriate Legal Notices"
+to the extent that it includes a convenient and prominently visible
+feature that (1) displays an appropriate copyright notice, and (2)
+tells the user that there is no warranty for the work (except to the
+extent that warranties are provided), that licensees may convey the
+work under this License, and how to view a copy of this License.  If
+the interface presents a list of user commands or options, such as a
+menu, a prominent item in the list meets this criterion.
+
+  1. Source Code.
+
+  The "source code" for a work means the preferred form of the work
+for making modifications to it.  "Object code" means any non-source
+form of a work.
+
+  A "Standard Interface" means an interface that either is an official
+standard defined by a recognized standards body, or, in the case of
+interfaces specified for a particular programming language, one that
+is widely used among developers working in that language.
+
+  The "System Libraries" of an executable work include anything, other
+than the work as a whole, that (a) is included in the normal form of
+packaging a Major Component, but which is not part of that Major
+Component, and (b) serves only to enable use of the work with that
+Major Component, or to implement a Standard Interface for which an
+implementation is available to the public in source code form.  A
+"Major Component", in this context, means a major essential component
+(kernel, window system, and so on) of the specific operating system
+(if any) on which the executable work runs, or a compiler used to
+produce the work, or an object code interpreter used to run it.
+
+  The "Corresponding Source" for a work in object code form means all
+the source code needed to generate, install, and (for an executable
+work) run the object code and to modify the work, including scripts to
+control those activities.  However, it does not include the work's
+System Libraries, or general-purpose tools or generally available free
+programs which are used unmodified in performing those activities but
+which are not part of the work.  For example, Corresponding Source
+includes interface definition files associated with source files for
+the work, and the source code for shared libraries and dynamically
+linked subprograms that the work is specifically designed to require,
+such as by intimate data communication or control flow between those
+subprograms and other parts of the work.
+
+  The Corresponding Source need not include anything that users
+can regenerate automatically from other parts of the Corresponding
+Source.
+
+  The Corresponding Source for a work in source code form is that
+same work.
+
+  2. Basic Permissions.
+
+  All rights granted under this License are granted for the term of
+copyright on the Program, and are irrevocable provided the stated
+conditions are met.  This License explicitly affirms your unlimited
+permission to run the unmodified Program.  The output from running a
+covered work is covered by this License only if the output, given its
+content, constitutes a covered work.  This License acknowledges your
+rights of fair use or other equivalent, as provided by copyright law.
+
+  You may make, run and propagate covered works that you do not
+convey, without conditions so long as your license otherwise remains
+in force.  You may convey covered works to others for the sole purpose
+of having them make modifications exclusively for you, or provide you
+with facilities for running those works, provided that you comply with
+the terms of this License in conveying all material for which you do
+not control copyright.  Those thus making or running the covered works
+for you must do so exclusively on your behalf, under your direction
+and control, on terms that prohibit them from making any copies of
+your copyrighted material outside their relationship with you.
+
+  Conveying under any other circumstances is permitted solely under
+the conditions stated below.  Sublicensing is not allowed; section 10
+makes it unnecessary.
+
+  3. Protecting Users' Legal Rights From Anti-Circumvention Law.
+
+  No covered work shall be deemed part of an effective technological
+measure under any applicable law fulfilling obligations under article
+11 of the WIPO copyright treaty adopted on 20 December 1996, or
+similar laws prohibiting or restricting circumvention of such
+measures.
+
+  When you convey a covered work, you waive any legal power to forbid
+circumvention of technological measures to the extent such circumvention
+is effected by exercising rights under this License with respect to
+the covered work, and you disclaim any intention to limit operation or
+modification of the work as a means of enforcing, against the work's
+users, your or third parties' legal rights to forbid circumvention of
+technological measures.
+
+  4. Conveying Verbatim Copies.
+
+  You may convey verbatim copies of the Program's source code as you
+receive it, in any medium, provided that you conspicuously and
+appropriately publish on each copy an appropriate copyright notice;
+keep intact all notices stating that this License and any
+non-permissive terms added in accord with section 7 apply to the code;
+keep intact all notices of the absence of any warranty; and give all
+recipients a copy of this License along with the Program.
+
+  You may charge any price or no price for each copy that you convey,
+and you may offer support or warranty protection for a fee.
+
+  5. Conveying Modified Source Versions.
+
+  You may convey a work based on the Program, or the modifications to
+produce it from the Program, in the form of source code under the
+terms of section 4, provided that you also meet all of these conditions:
+
+    a) The work must carry prominent notices stating that you modified
+    it, and giving a relevant date.
+
+    b) The work must carry prominent notices stating that it is
+    released under this License and any conditions added under section
+    7.  This requirement modifies the requirement in section 4 to
+    "keep intact all notices".
+
+    c) You must license the entire work, as a whole, under this
+    License to anyone who comes into possession of a copy.  This
+    License will therefore apply, along with any applicable section 7
+    additional terms, to the whole of the work, and all its parts,
+    regardless of how they are packaged.  This License gives no
+    permission to license the work in any other way, but it does not
+    invalidate such permission if you have separately received it.
+
+    d) If the work has interactive user interfaces, each must display
+    Appropriate Legal Notices; however, if the Program has interactive
+    interfaces that do not display Appropriate Legal Notices, your
+    work need not make them do so.
+
+  A compilation of a covered work with other separate and independent
+works, which are not by their nature extensions of the covered work,
+and which are not combined with it such as to form a larger program,
+in or on a volume of a storage or distribution medium, is called an
+"aggregate" if the compilation and its resulting copyright are not
+used to limit the access or legal rights of the compilation's users
+beyond what the individual works permit.  Inclusion of a covered work
+in an aggregate does not cause this License to apply to the other
+parts of the aggregate.
+
+  6. Conveying Non-Source Forms.
+
+  You may convey a covered work in object code form under the terms
+of sections 4 and 5, provided that you also convey the
+machine-readable Corresponding Source under the terms of this License,
+in one of these ways:
+
+    a) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by the
+    Corresponding Source fixed on a durable physical medium
+    customarily used for software interchange.
+
+    b) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by a
+    written offer, valid for at least three years and valid for as
+    long as you offer spare parts or customer support for that product
+    model, to give anyone who possesses the object code either (1) a
+    copy of the Corresponding Source for all the software in the
+    product that is covered by this License, on a durable physical
+    medium customarily used for software interchange, for a price no
+    more than your reasonable cost of physically performing this
+    conveying of source, or (2) access to copy the
+    Corresponding Source from a network server at no charge.
+
+    c) Convey individual copies of the object code with a copy of the
+    written offer to provide the Corresponding Source.  This
+    alternative is allowed only occasionally and noncommercially, and
+    only if you received the object code with such an offer, in accord
+    with subsection 6b.
+
+    d) Convey the object code by offering access from a designated
+    place (gratis or for a charge), and offer equivalent access to the
+    Corresponding Source in the same way through the same place at no
+    further charge.  You need not require recipients to copy the
+    Corresponding Source along with the object code.  If the place to
+    copy the object code is a network server, the Corresponding Source
+    may be on a different server (operated by you or a third party)
+    that supports equivalent copying facilities, provided you maintain
+    clear directions next to the object code saying where to find the
+    Corresponding Source.  Regardless of what server hosts the
+    Corresponding Source, you remain obligated to ensure that it is
+    available for as long as needed to satisfy these requirements.
+
+    e) Convey the object code using peer-to-peer transmission, provided
+    you inform other peers where the object code and Corresponding
+    Source of the work are being offered to the general public at no
+    charge under subsection 6d.
+
+  A separable portion of the object code, whose source code is excluded
+from the Corresponding Source as a System Library, need not be
+included in conveying the object code work.
+
+  A "User Product" is either (1) a "consumer product", which means any
+tangible personal property which is normally used for personal, family,
+or household purposes, or (2) anything designed or sold for incorporation
+into a dwelling.  In determining whether a product is a consumer product,
+doubtful cases shall be resolved in favor of coverage.  For a particular
+product received by a particular user, "normally used" refers to a
+typical or common use of that class of product, regardless of the status
+of the particular user or of the way in which the particular user
+actually uses, or expects or is expected to use, the product.  A product
+is a consumer product regardless of whether the product has substantial
+commercial, industrial or non-consumer uses, unless such uses represent
+the only significant mode of use of the product.
+
+  "Installation Information" for a User Product means any methods,
+procedures, authorization keys, or other information required to install
+and execute modified versions of a covered work in that User Product from
+a modified version of its Corresponding Source.  The information must
+suffice to ensure that the continued functioning of the modified object
+code is in no case prevented or interfered with solely because
+modification has been made.
+
+  If you convey an object code work under this section in, or with, or
+specifically for use in, a User Product, and the conveying occurs as
+part of a transaction in which the right of possession and use of the
+User Product is transferred to the recipient in perpetuity or for a
+fixed term (regardless of how the transaction is characterized), the
+Corresponding Source conveyed under this section must be accompanied
+by the Installation Information.  But this requirement does not apply
+if neither you nor any third party retains the ability to install
+modified object code on the User Product (for example, the work has
+been installed in ROM).
+
+  The requirement to provide Installation Information does not include a
+requirement to continue to provide support service, warranty, or updates
+for a work that has been modified or installed by the recipient, or for
+the User Product in which it has been modified or installed.  Access to a
+network may be denied when the modification itself materially and
+adversely affects the operation of the network or violates the rules and
+protocols for communication across the network.
+
+  Corresponding Source conveyed, and Installation Information provided,
+in accord with this section must be in a format that is publicly
+documented (and with an implementation available to the public in
+source code form), and must require no special password or key for
+unpacking, reading or copying.
+
+  7. Additional Terms.
+
+  "Additional permissions" are terms that supplement the terms of this
+License by making exceptions from one or more of its conditions.
+Additional permissions that are applicable to the entire Program shall
+be treated as though they were included in this License, to the extent
+that they are valid under applicable law.  If additional permissions
+apply only to part of the Program, that part may be used separately
+under those permissions, but the entire Program remains governed by
+this License without regard to the additional permissions.
+
+  When you convey a copy of a covered work, you may at your option
+remove any additional permissions from that copy, or from any part of
+it.  (Additional permissions may be written to require their own
+removal in certain cases when you modify the work.)  You may place
+additional permissions on material, added by you to a covered work,
+for which you have or can give appropriate copyright permission.
+
+  Notwithstanding any other provision of this License, for material you
+add to a covered work, you may (if authorized by the copyright holders of
+that material) supplement the terms of this License with terms:
+
+    a) Disclaiming warranty or limiting liability differently from the
+    terms of sections 15 and 16 of this License; or
+
+    b) Requiring preservation of specified reasonable legal notices or
+    author attributions in that material or in the Appropriate Legal
+    Notices displayed by works containing it; or
+
+    c) Prohibiting misrepresentation of the origin of that material, or
+    requiring that modified versions of such material be marked in
+    reasonable ways as different from the original version; or
+
+    d) Limiting the use for publicity purposes of names of licensors or
+    authors of the material; or
+
+    e) Declining to grant rights under trademark law for use of some
+    trade names, trademarks, or service marks; or
+
+    f) Requiring indemnification of licensors and authors of that
+    material by anyone who conveys the material (or modified versions of
+    it) with contractual assumptions of liability to the recipient, for
+    any liability that these contractual assumptions directly impose on
+    those licensors and authors.
+
+  All other non-permissive additional terms are considered "further
+restrictions" within the meaning of section 10.  If the Program as you
+received it, or any part of it, contains a notice stating that it is
+governed by this License along with a term that is a further
+restriction, you may remove that term.  If a license document contains
+a further restriction but permits relicensing or conveying under this
+License, you may add to a covered work material governed by the terms
+of that license document, provided that the further restriction does
+not survive such relicensing or conveying.
+
+  If you add terms to a covered work in accord with this section, you
+must place, in the relevant source files, a statement of the
+additional terms that apply to those files, or a notice indicating
+where to find the applicable terms.
+
+  Additional terms, permissive or non-permissive, may be stated in the
+form of a separately written license, or stated as exceptions;
+the above requirements apply either way.
+
+  8. Termination.
+
+  You may not propagate or modify a covered work except as expressly
+provided under this License.  Any attempt otherwise to propagate or
+modify it is void, and will automatically terminate your rights under
+this License (including any patent licenses granted under the third
+paragraph of section 11).
+
+  However, if you cease all violation of this License, then your
+license from a particular copyright holder is reinstated (a)
+provisionally, unless and until the copyright holder explicitly and
+finally terminates your license, and (b) permanently, if the copyright
+holder fails to notify you of the violation by some reasonable means
+prior to 60 days after the cessation.
+
+  Moreover, your license from a particular copyright holder is
+reinstated permanently if the copyright holder notifies you of the
+violation by some reasonable means, this is the first time you have
+received notice of violation of this License (for any work) from that
+copyright holder, and you cure the violation prior to 30 days after
+your receipt of the notice.
+
+  Termination of your rights under this section does not terminate the
+licenses of parties who have received copies or rights from you under
+this License.  If your rights have been terminated and not permanently
+reinstated, you do not qualify to receive new licenses for the same
+material under section 10.
+
+  9. Acceptance Not Required for Having Copies.
+
+  You are not required to accept this License in order to receive or
+run a copy of the Program.  Ancillary propagation of a covered work
+occurring solely as a consequence of using peer-to-peer transmission
+to receive a copy likewise does not require acceptance.  However,
+nothing other than this License grants you permission to propagate or
+modify any covered work.  These actions infringe copyright if you do
+not accept this License.  Therefore, by modifying or propagating a
+covered work, you indicate your acceptance of this License to do so.
+
+  10. Automatic Licensing of Downstream Recipients.
+
+  Each time you convey a covered work, the recipient automatically
+receives a license from the original licensors, to run, modify and
+propagate that work, subject to this License.  You are not responsible
+for enforcing compliance by third parties with this License.
+
+  An "entity transaction" is a transaction transferring control of an
+organization, or substantially all assets of one, or subdividing an
+organization, or merging organizations.  If propagation of a covered
+work results from an entity transaction, each party to that
+transaction who receives a copy of the work also receives whatever
+licenses to the work the party's predecessor in interest had or could
+give under the previous paragraph, plus a right to possession of the
+Corresponding Source of the work from the predecessor in interest, if
+the predecessor has it or can get it with reasonable efforts.
+
+  You may not impose any further restrictions on the exercise of the
+rights granted or affirmed under this License.  For example, you may
+not impose a license fee, royalty, or other charge for exercise of
+rights granted under this License, and you may not initiate litigation
+(including a cross-claim or counterclaim in a lawsuit) alleging that
+any patent claim is infringed by making, using, selling, offering for
+sale, or importing the Program or any portion of it.
+
+  11. Patents.
+
+  A "contributor" is a copyright holder who authorizes use under this
+License of the Program or a work on which the Program is based.  The
+work thus licensed is called the contributor's "contributor version".
+
+  A contributor's "essential patent claims" are all patent claims
+owned or controlled by the contributor, whether already acquired or
+hereafter acquired, that would be infringed by some manner, permitted
+by this License, of making, using, or selling its contributor version,
+but do not include claims that would be infringed only as a
+consequence of further modification of the contributor version.  For
+purposes of this definition, "control" includes the right to grant
+patent sublicenses in a manner consistent with the requirements of
+this License.
+
+  Each contributor grants you a non-exclusive, worldwide, royalty-free
+patent license under the contributor's essential patent claims, to
+make, use, sell, offer for sale, import and otherwise run, modify and
+propagate the contents of its contributor version.
+
+  In the following three paragraphs, a "patent license" is any express
+agreement or commitment, however denominated, not to enforce a patent
+(such as an express permission to practice a patent or covenant not to
+sue for patent infringement).  To "grant" such a patent license to a
+party means to make such an agreement or commitment not to enforce a
+patent against the party.
+
+  If you convey a covered work, knowingly relying on a patent license,
+and the Corresponding Source of the work is not available for anyone
+to copy, free of charge and under the terms of this License, through a
+publicly available network server or other readily accessible means,
+then you must either (1) cause the Corresponding Source to be so
+available, or (2) arrange to deprive yourself of the benefit of the
+patent license for this particular work, or (3) arrange, in a manner
+consistent with the requirements of this License, to extend the patent
+license to downstream recipients.  "Knowingly relying" means you have
+actual knowledge that, but for the patent license, your conveying the
+covered work in a country, or your recipient's use of the covered work
+in a country, would infringe one or more identifiable patents in that
+country that you have reason to believe are valid.
+
+  If, pursuant to or in connection with a single transaction or
+arrangement, you convey, or propagate by procuring conveyance of, a
+covered work, and grant a patent license to some of the parties
+receiving the covered work authorizing them to use, propagate, modify
+or convey a specific copy of the covered work, then the patent license
+you grant is automatically extended to all recipients of the covered
+work and works based on it.
+
+  A patent license is "discriminatory" if it does not include within
+the scope of its coverage, prohibits the exercise of, or is
+conditioned on the non-exercise of one or more of the rights that are
+specifically granted under this License.  You may not convey a covered
+work if you are a party to an arrangement with a third party that is
+in the business of distributing software, under which you make payment
+to the third party based on the extent of your activity of conveying
+the work, and under which the third party grants, to any of the
+parties who would receive the covered work from you, a discriminatory
+patent license (a) in connection with copies of the covered work
+conveyed by you (or copies made from those copies), or (b) primarily
+for and in connection with specific products or compilations that
+contain the covered work, unless you entered into that arrangement,
+or that patent license was granted, prior to 28 March 2007.
+
+  Nothing in this License shall be construed as excluding or limiting
+any implied license or other defenses to infringement that may
+otherwise be available to you under applicable patent law.
+
+  12. No Surrender of Others' Freedom.
+
+  If conditions are imposed on you (whether by court order, agreement or
+otherwise) that contradict the conditions of this License, they do not
+excuse you from the conditions of this License.  If you cannot convey a
+covered work so as to satisfy simultaneously your obligations under this
+License and any other pertinent obligations, then as a consequence you may
+not convey it at all.  For example, if you agree to terms that obligate you
+to collect a royalty for further conveying from those to whom you convey
+the Program, the only way you could satisfy both those terms and this
+License would be to refrain entirely from conveying the Program.
+
+  13. Use with the GNU Affero General Public License.
+
+  Notwithstanding any other provision of this License, you have
+permission to link or combine any covered work with a work licensed
+under version 3 of the GNU Affero General Public License into a single
+combined work, and to convey the resulting work.  The terms of this
+License will continue to apply to the part which is the covered work,
+but the special requirements of the GNU Affero General Public License,
+section 13, concerning interaction through a network will apply to the
+combination as such.
+
+  14. Revised Versions of this License.
+
+  The Free Software Foundation may publish revised and/or new versions of
+the GNU General Public License from time to time.  Such new versions will
+be similar in spirit to the present version, but may differ in detail to
+address new problems or concerns.
+
+  Each version is given a distinguishing version number.  If the
+Program specifies that a certain numbered version of the GNU General
+Public License "or any later version" applies to it, you have the
+option of following the terms and conditions either of that numbered
+version or of any later version published by the Free Software
+Foundation.  If the Program does not specify a version number of the
+GNU General Public License, you may choose any version ever published
+by the Free Software Foundation.
+
+  If the Program specifies that a proxy can decide which future
+versions of the GNU General Public License can be used, that proxy's
+public statement of acceptance of a version permanently authorizes you
+to choose that version for the Program.
+
+  Later license versions may give you additional or different
+permissions.  However, no additional obligations are imposed on any
+author or copyright holder as a result of your choosing to follow a
+later version.
+
+  15. Disclaimer of Warranty.
+
+  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
+HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
+OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
+IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
+ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+  16. Limitation of Liability.
+
+  IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
+THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
+USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
+DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
+PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
+EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGES.
+
+  17. Interpretation of Sections 15 and 16.
+
+  If the disclaimer of warranty and limitation of liability provided
+above cannot be given local legal effect according to their terms,
+reviewing courts shall apply local law that most closely approximates
+an absolute waiver of all civil liability in connection with the
+Program, unless a warranty or assumption of liability accompanies a
+copy of the Program in return for a fee.
+
+                     END OF TERMS AND CONDITIONS
+
+            How to Apply These Terms to Your New Programs
+
+  If you develop a new program, and you want it to be of the greatest
+possible use to the public, the best way to achieve this is to make it
+free software which everyone can redistribute and change under these terms.
+
+  To do so, attach the following notices to the program.  It is safest
+to attach them to the start of each source file to most effectively
+state the exclusion of warranty; and each file should have at least
+the "copyright" line and a pointer to where the full notice is found.
+
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) <year>  <name of author>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Also add information on how to contact you by electronic and paper mail.
+
+  If the program does terminal interaction, make it output a short
+notice like this when it starts in an interactive mode:
+
+    <program>  Copyright (C) <year>  <name of author>
+    This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions; type `show c' for details.
+
+The hypothetical commands `show w' and `show c' should show the appropriate
+parts of the General Public License.  Of course, your program's commands
+might be different; for a GUI interface, you would use an "about box".
+
+  You should also get your employer (if you work as a programmer) or school,
+if any, to sign a "copyright disclaimer" for the program, if necessary.
+For more information on this, and how to apply and follow the GNU GPL, see
+<https://www.gnu.org/licenses/>.
+
+  The GNU General Public License does not permit incorporating your program
+into proprietary programs.  If your program is a subroutine library, you
+may consider it more useful to permit linking proprietary applications with
+the library.  If this is what you want to do, use the GNU Lesser General
+Public License instead of this License.  But first, please read
+<https://www.gnu.org/licenses/why-not-lgpl.html>.</script>
 <script>
 (() => {
   'use strict';
 
   // ---------------------------------------------------------------------------
-  // Utilities
+  // Utilidades
   // ---------------------------------------------------------------------------
-  const EPS = 1e-12;
+  const EPS = Number.EPSILON;
+  const NUMERIC_FACTOR = 64;
+  const APP_CONFIG = Object.freeze({name:'JerkSimulator',author:'Raymundo Ortiz',version:'V4.3.2',license:'GPL-3.0-or-later',github:'https://github.com/FireRayo/JerkSimulator/'});
+  const I18N = {"en":{"app.title":"JerkSimulator","app.subtitle":"Validated S-curve and linear-ramp motion profile simulator.","units.note":"Units: mm, s, mm/s, mm/s², and mm/s³. The app does not convert units.","section.motion":"Motion constraints","label.distance":"Target distance S [mm]","label.vmax":"Max speed Vmax [mm/s]","label.amax":"Max acceleration Amax [mm/s²]","label.dmax":"Max deceleration Dmax [mm/s²]","section.jerk":"Jerk limits","mode.single":"Single jerk","mode.independent":"Independent jerks","label.jmax":"Max jerk j [mm/s³]","note.jerkSingle":"The app applies this value to J1, J2, J3, and J4. Set it to 0 to use ideal linear ramps with instantaneous acceleration changes.","label.j1":"J1 acceleration entry [mm/s³]","label.j2":"J2 acceleration exit [mm/s³]","label.j3":"J3 deceleration entry [mm/s³]","label.j4":"J4 deceleration exit [mm/s³]","note.jerkIndependent":"Each transition has its own jerk limit. A value of 0 disables S-curve smoothing for that transition and creates an ideal instantaneous acceleration change.","note.jerkZero":"Jerk = 0 convention: smoothing is disabled. The jerk graph shows ideal ±∞ impulses at instantaneous acceleration changes; jerk is 0 between those events.","section.boundary":"Boundary velocities and output sampling","label.v0":"Initial speed V0 [mm/s]","label.vf":"Final speed Vf [mm/s]","label.samples":"Plot / CSV samples (visual density only; does not affect physical accuracy)","btn.simulate":"Simulate","btn.reset":"Reset","btn.export":"Export CSV","btn.about":"About","btn.printPDF":"Print to PDF","section.chartTools":"Chart comparison and view tools","btn.clearPrevious":"Clear previous","btn.resetZoom":"Reset zoom","btn.play":"Play","btn.pause":"Pause","btn.stop":"Stop","btn.close":"Close","btn.viewLicense":"View License","compare.overlay":"Overlay previous run","charts.hint":"Mouse: move = synchronized exact cursor · wheel = zoom · drag = pan · double-click = reset zoom","chart.position":"Position x(t) [mm]","chart.velocity":"Velocity v(t) [mm/s]","chart.acceleration":"Acceleration a(t) [mm/s²]","chart.jerk":"Jerk j(t) [mm/s³]","chart.motion":"Linear motion (animated from exact x(t))","label.speed":"Speed ×","label.repeat":"Repeat","spinner":"Computing exact motion profile…","footer.exact":"Exact analytical state propagation and validated limits","control.language":"Language","control.theme":"Theme","theme.light":"Light","theme.dark":"Dark","about.description":"Offline validated motion simulator with exact S-curve calculations and ideal linear-ramp support when jerk is 0.","about.application":"Application","about.author":"Author","about.version":"Version","about.github":"GitHub","about.license":"License","license.title":"GNU General Public License v3","jerkGraph.impulseNote":"Vertical ±∞ markers are ideal jerk impulses caused by instantaneous acceleration changes when a jerk limit is 0.","metric.validation":"Validation","metric.profileMode":"Profile mode","metric.motionModel":"Motion model","metric.jerkMode":"Jerk input mode","metric.totalTime":"Total time","metric.distance":"Distance","metric.peakVelocity":"Peak velocity","metric.peakAccel":"Peak |accel|","metric.cruise":"Cruise Tv","metric.finalVelocity":"Final velocity","metric.distanceError":"Distance error","metric.points":"Output points","metric.accelPhase":"Acceleration phase","metric.decelPhase":"Deceleration phase","model.scurve":"S-curve","model.trapezoidal":"Linear ramp / trapezoidal","model.hybrid":"Hybrid S-curve / linear ramp","jerkMode.single":"Single","jerkMode.independent":"Independent","status.valid":"VALID","status.invalid":"INVALID","profile.vmaxCruise":"Vmax + cruise","profile.vmaxNoCruise":"Vmax, no cruise","profile.reducedPeak":"Reduced peak, no cruise","segment.1":"1 · Acceleration jerk entry","segment.2":"2 · Constant acceleration","segment.3":"3 · Acceleration jerk exit","segment.4":"4 · Cruise","segment.5":"5 · Deceleration jerk entry","segment.6":"6 · Constant deceleration","segment.7":"7 · Deceleration jerk exit","segment.end":"End","short.1":"J+a","short.2":"A constant","short.3":"J−a","short.4":"Cruise","short.5":"J−d","short.6":"D constant","short.7":"J+d","segment.impulse":"impulse {sign}∞","segment.detail":"{time} s · j={jerk}","chart.noProfile":"No profile. Run a simulation.","chart.max":"max","chart.min":"min","msg.reset":"Values and stored profiles reset.","msg.success":"Exact profile generated: {points} output points · distance error {error} mm{previous}.","msg.previousAvailable":" · previous run available for overlay","msg.error":"Simulation error: {detail}","msg.exportFirst":"Run a simulation first to export CSV.","msg.previousCleared":"Previous comparison profile cleared.","msg.noStored":"No stored profiles.","err.distancePositive":"Distance S must be greater than 0.","err.finite":"{name} must be a finite number.","err.corePositive":"Vmax, Amax, and Dmax must be greater than 0.","err.jerkNonNegative":"Jerk limits must be 0 or greater.","err.boundaryNonNegative":"V0 and Vf must be 0 or greater.","err.vmaxBoundary":"Vmax must be greater than or equal to V0 and Vf.","err.vpeakBelow":"The peak velocity is below a boundary velocity.","err.vpeakAbove":"The peak velocity exceeds Vmax.","err.distanceTooShort":"The distance is too short for the requested boundary velocities. Minimum transition distance: {distance} mm.","err.validation":"Profile validation failed: {detail}","csv.zeroConvention":"0 disables S-curve smoothing for that transition; ideal jerk impulse is infinite at the acceleration step."},"es":{"app.title":"JerkSimulator","app.subtitle":"Simulador validado de perfiles de movimiento S-curve y rampas lineales.","units.note":"Unidades: mm, s, mm/s, mm/s² y mm/s³. La app no convierte unidades.","section.motion":"Límites de movimiento","label.distance":"Distancia objetivo S [mm]","label.vmax":"Velocidad máxima Vmax [mm/s]","label.amax":"Aceleración máxima Amax [mm/s²]","label.dmax":"Desaceleración máxima Dmax [mm/s²]","section.jerk":"Límites de jerk","mode.single":"Jerk único","mode.independent":"Jerks independientes","label.jmax":"Jerk máximo j [mm/s³]","note.jerkSingle":"La app aplica este valor a J1, J2, J3 y J4. Coloca 0 para usar rampas lineales ideales con cambios instantáneos de aceleración.","label.j1":"J1 entrada de aceleración [mm/s³]","label.j2":"J2 salida de aceleración [mm/s³]","label.j3":"J3 entrada de desaceleración [mm/s³]","label.j4":"J4 salida de desaceleración [mm/s³]","note.jerkIndependent":"Cada transición tiene su propio límite de jerk. Un valor 0 desactiva el suavizado S-curve en esa transición y crea un cambio instantáneo ideal de aceleración.","note.jerkZero":"Convención Jerk = 0: el suavizado se desactiva. La gráfica de jerk muestra impulsos ideales ±∞ en los cambios instantáneos de aceleración; el jerk es 0 entre esos eventos.","section.boundary":"Velocidades de frontera y muestreo de salida","label.v0":"Velocidad inicial V0 [mm/s]","label.vf":"Velocidad final Vf [mm/s]","label.samples":"Muestras para gráfica / CSV (solo densidad visual; no afecta la precisión física)","btn.simulate":"Simular","btn.reset":"Restablecer","btn.export":"Exportar CSV","btn.about":"Acerca de","btn.printPDF":"Imprimir a PDF","section.chartTools":"Comparación de gráficas y herramientas de vista","btn.clearPrevious":"Borrar anterior","btn.resetZoom":"Restablecer zoom","btn.play":"Reproducir","btn.pause":"Pausa","btn.stop":"Detener","btn.close":"Cerrar","btn.viewLicense":"Ver licencia","compare.overlay":"Superponer corrida anterior","charts.hint":"Ratón: mover = cursor exacto sincronizado · rueda = zoom · arrastrar = desplazar · doble clic = restablecer zoom","chart.position":"Posición x(t) [mm]","chart.velocity":"Velocidad v(t) [mm/s]","chart.acceleration":"Aceleración a(t) [mm/s²]","chart.jerk":"Jerk j(t) [mm/s³]","chart.motion":"Movimiento lineal (animado desde x(t) exacta)","label.speed":"Velocidad ×","label.repeat":"Repetir","spinner":"Calculando perfil de movimiento exacto…","footer.exact":"Propagación analítica exacta y límites validados","control.language":"Idioma","control.theme":"Tema","theme.light":"Claro","theme.dark":"Oscuro","about.description":"Simulador offline validado con cálculo S-curve exacto y soporte de rampas lineales ideales cuando el jerk es 0.","about.application":"Aplicación","about.author":"Autor","about.version":"Versión","about.github":"GitHub","about.license":"Licencia","license.title":"GNU General Public License v3","jerkGraph.impulseNote":"Los marcadores verticales ±∞ son impulsos ideales de jerk causados por cambios instantáneos de aceleración cuando un límite de jerk es 0.","metric.validation":"Validación","metric.profileMode":"Modo de perfil","metric.motionModel":"Modelo de movimiento","metric.jerkMode":"Modo de entrada de jerk","metric.totalTime":"Tiempo total","metric.distance":"Distancia","metric.peakVelocity":"Velocidad pico","metric.peakAccel":"Pico |aceleración|","metric.cruise":"Crucero Tv","metric.finalVelocity":"Velocidad final","metric.distanceError":"Error de distancia","metric.points":"Puntos de salida","metric.accelPhase":"Fase de aceleración","metric.decelPhase":"Fase de desaceleración","model.scurve":"S-curve","model.trapezoidal":"Rampa lineal / trapezoidal","model.hybrid":"S-curve / rampa lineal híbrida","jerkMode.single":"Único","jerkMode.independent":"Independiente","status.valid":"VÁLIDO","status.invalid":"INVÁLIDO","profile.vmaxCruise":"Vmax + crucero","profile.vmaxNoCruise":"Vmax, sin crucero","profile.reducedPeak":"Pico reducido, sin crucero","segment.1":"1 · Entrada jerk de aceleración","segment.2":"2 · Aceleración constante","segment.3":"3 · Salida jerk de aceleración","segment.4":"4 · Crucero","segment.5":"5 · Entrada jerk de desaceleración","segment.6":"6 · Desaceleración constante","segment.7":"7 · Salida jerk de desaceleración","segment.end":"Fin","short.1":"J+a","short.2":"A constante","short.3":"J−a","short.4":"Crucero","short.5":"J−d","short.6":"D constante","short.7":"J+d","segment.impulse":"impulso {sign}∞","segment.detail":"{time} s · j={jerk}","chart.noProfile":"Sin perfil. Ejecuta una simulación.","chart.max":"máx.","chart.min":"mín.","msg.reset":"Valores y perfiles almacenados restablecidos.","msg.success":"Perfil exacto generado: {points} puntos de salida · error de distancia {error} mm{previous}.","msg.previousAvailable":" · corrida anterior disponible para superponer","msg.error":"Error de simulación: {detail}","msg.exportFirst":"Ejecuta primero una simulación para exportar CSV.","msg.previousCleared":"Perfil anterior de comparación borrado.","msg.noStored":"No hay perfiles almacenados.","err.distancePositive":"La distancia S debe ser mayor que 0.","err.finite":"{name} debe ser un número finito.","err.corePositive":"Vmax, Amax y Dmax deben ser mayores que 0.","err.jerkNonNegative":"Los límites de jerk deben ser 0 o mayores.","err.boundaryNonNegative":"V0 y Vf deben ser 0 o mayores.","err.vmaxBoundary":"Vmax debe ser mayor o igual que V0 y Vf.","err.vpeakBelow":"La velocidad pico es menor que una velocidad de frontera.","err.vpeakAbove":"La velocidad pico supera Vmax.","err.distanceTooShort":"La distancia es demasiado corta para las velocidades de frontera solicitadas. Distancia mínima de transición: {distance} mm.","err.validation":"Falló la validación del perfil: {detail}","csv.zeroConvention":"0 desactiva el suavizado S-curve en esa transición; el impulso ideal de jerk es infinito en el salto de aceleración."},"it":{"app.title":"JerkSimulator","app.subtitle":"Simulatore validato di profili di moto S-curve e rampe lineari.","units.note":"Unità: mm, s, mm/s, mm/s² e mm/s³. L'app non converte le unità.","section.motion":"Limiti di movimento","label.distance":"Distanza target S [mm]","label.vmax":"Velocità massima Vmax [mm/s]","label.amax":"Accelerazione massima Amax [mm/s²]","label.dmax":"Decelerazione massima Dmax [mm/s²]","section.jerk":"Limiti di jerk","mode.single":"Jerk singolo","mode.independent":"Jerk indipendenti","label.jmax":"Jerk massimo j [mm/s³]","note.jerkSingle":"L'app applica questo valore a J1, J2, J3 e J4. Imposta 0 per usare rampe lineari ideali con cambi istantanei di accelerazione.","label.j1":"J1 ingresso accelerazione [mm/s³]","label.j2":"J2 uscita accelerazione [mm/s³]","label.j3":"J3 ingresso decelerazione [mm/s³]","label.j4":"J4 uscita decelerazione [mm/s³]","note.jerkIndependent":"Ogni transizione ha il proprio limite di jerk. Il valore 0 disattiva lo smoothing S-curve per quella transizione e crea un cambio istantaneo ideale di accelerazione.","note.jerkZero":"Convenzione Jerk = 0: lo smoothing è disattivato. Il grafico del jerk mostra impulsi ideali ±∞ nei cambi istantanei di accelerazione; il jerk è 0 tra questi eventi.","section.boundary":"Velocità ai limiti e campionamento di uscita","label.v0":"Velocità iniziale V0 [mm/s]","label.vf":"Velocità finale Vf [mm/s]","label.samples":"Campioni grafico / CSV (solo densità visiva; non modifica la precisione fisica)","btn.simulate":"Simula","btn.reset":"Ripristina","btn.export":"Esporta CSV","btn.about":"Informazioni","btn.printPDF":"Stampa in PDF","section.chartTools":"Confronto grafici e strumenti di visualizzazione","btn.clearPrevious":"Cancella precedente","btn.resetZoom":"Ripristina zoom","btn.play":"Avvia","btn.pause":"Pausa","btn.stop":"Arresta","btn.close":"Chiudi","btn.viewLicense":"Vedi licenza","compare.overlay":"Sovrapponi esecuzione precedente","charts.hint":"Mouse: movimento = cursore esatto sincronizzato · rotella = zoom · trascina = panoramica · doppio clic = ripristina zoom","chart.position":"Posizione x(t) [mm]","chart.velocity":"Velocità v(t) [mm/s]","chart.acceleration":"Accelerazione a(t) [mm/s²]","chart.jerk":"Jerk j(t) [mm/s³]","chart.motion":"Movimento lineare (animato da x(t) esatta)","label.speed":"Velocità ×","label.repeat":"Ripeti","spinner":"Calcolo del profilo di movimento esatto…","footer.exact":"Propagazione analitica esatta e limiti validati","control.language":"Lingua","control.theme":"Tema","theme.light":"Chiaro","theme.dark":"Scuro","about.description":"Simulatore offline validato con calcolo S-curve esatto e supporto delle rampe lineari ideali quando il jerk è 0.","about.application":"Applicazione","about.author":"Autore","about.version":"Versione","about.github":"GitHub","about.license":"Licenza","license.title":"GNU General Public License v3","jerkGraph.impulseNote":"I marcatori verticali ±∞ sono impulsi ideali di jerk causati da cambi istantanei di accelerazione quando un limite di jerk è 0.","metric.validation":"Validazione","metric.profileMode":"Modo profilo","metric.motionModel":"Modello di movimento","metric.jerkMode":"Modo ingresso jerk","metric.totalTime":"Tempo totale","metric.distance":"Distanza","metric.peakVelocity":"Velocità di picco","metric.peakAccel":"Picco |accelerazione|","metric.cruise":"Crociera Tv","metric.finalVelocity":"Velocità finale","metric.distanceError":"Errore distanza","metric.points":"Punti di uscita","metric.accelPhase":"Fase di accelerazione","metric.decelPhase":"Fase di decelerazione","model.scurve":"S-curve","model.trapezoidal":"Rampa lineare / trapezoidale","model.hybrid":"S-curve / rampa lineare ibrida","jerkMode.single":"Singolo","jerkMode.independent":"Indipendente","status.valid":"VALIDO","status.invalid":"NON VALIDO","profile.vmaxCruise":"Vmax + crociera","profile.vmaxNoCruise":"Vmax, senza crociera","profile.reducedPeak":"Picco ridotto, senza crociera","segment.1":"1 · Ingresso jerk accelerazione","segment.2":"2 · Accelerazione costante","segment.3":"3 · Uscita jerk accelerazione","segment.4":"4 · Crociera","segment.5":"5 · Ingresso jerk decelerazione","segment.6":"6 · Decelerazione costante","segment.7":"7 · Uscita jerk decelerazione","segment.end":"Fine","short.1":"J+a","short.2":"A costante","short.3":"J−a","short.4":"Crociera","short.5":"J−d","short.6":"D costante","short.7":"J+d","segment.impulse":"impulso {sign}∞","segment.detail":"{time} s · j={jerk}","chart.noProfile":"Nessun profilo. Esegui una simulazione.","chart.max":"max","chart.min":"min","msg.reset":"Valori e profili memorizzati ripristinati.","msg.success":"Profilo esatto generato: {points} punti di uscita · errore distanza {error} mm{previous}.","msg.previousAvailable":" · esecuzione precedente disponibile per la sovrapposizione","msg.error":"Errore di simulazione: {detail}","msg.exportFirst":"Esegui prima una simulazione per esportare il CSV.","msg.previousCleared":"Profilo precedente di confronto cancellato.","msg.noStored":"Nessun profilo memorizzato.","err.distancePositive":"La distanza S deve essere maggiore di 0.","err.finite":"{name} deve essere un numero finito.","err.corePositive":"Vmax, Amax e Dmax devono essere maggiori di 0.","err.jerkNonNegative":"I limiti di jerk devono essere 0 o maggiori.","err.boundaryNonNegative":"V0 e Vf devono essere 0 o maggiori.","err.vmaxBoundary":"Vmax deve essere maggiore o uguale a V0 e Vf.","err.vpeakBelow":"La velocità di picco è inferiore a una velocità al limite.","err.vpeakAbove":"La velocità di picco supera Vmax.","err.distanceTooShort":"La distanza è troppo breve per le velocità ai limiti richieste. Distanza minima di transizione: {distance} mm.","err.validation":"Validazione del profilo non riuscita: {detail}","csv.zeroConvention":"0 disattiva lo smoothing S-curve per quella transizione; l'impulso ideale di jerk è infinito nel salto di accelerazione."},"pt-BR":{"app.title":"JerkSimulator","app.subtitle":"Simulador validado de perfis de movimento S-curve e rampas lineares.","units.note":"Unidades: mm, s, mm/s, mm/s² e mm/s³. O app não converte unidades.","section.motion":"Limites de movimento","label.distance":"Distância alvo S [mm]","label.vmax":"Velocidade máxima Vmax [mm/s]","label.amax":"Aceleração máxima Amax [mm/s²]","label.dmax":"Desaceleração máxima Dmax [mm/s²]","section.jerk":"Limites de jerk","mode.single":"Jerk único","mode.independent":"Jerks independentes","label.jmax":"Jerk máximo j [mm/s³]","note.jerkSingle":"O app aplica este valor a J1, J2, J3 e J4. Defina 0 para usar rampas lineares ideais com mudanças instantâneas de aceleração.","label.j1":"J1 entrada de aceleração [mm/s³]","label.j2":"J2 saída de aceleração [mm/s³]","label.j3":"J3 entrada de desaceleração [mm/s³]","label.j4":"J4 saída de desaceleração [mm/s³]","note.jerkIndependent":"Cada transição tem seu próprio limite de jerk. O valor 0 desativa a suavização S-curve nessa transição e cria uma mudança instantânea ideal de aceleração.","note.jerkZero":"Convenção Jerk = 0: a suavização é desativada. O gráfico de jerk mostra impulsos ideais ±∞ nas mudanças instantâneas de aceleração; o jerk é 0 entre esses eventos.","section.boundary":"Velocidades de limite e amostragem de saída","label.v0":"Velocidade inicial V0 [mm/s]","label.vf":"Velocidade final Vf [mm/s]","label.samples":"Amostras para gráfico / CSV (somente densidade visual; não afeta a precisão física)","btn.simulate":"Simular","btn.reset":"Redefinir","btn.export":"Exportar CSV","btn.about":"Sobre","btn.printPDF":"Imprimir em PDF","section.chartTools":"Comparação de gráficos e ferramentas de visualização","btn.clearPrevious":"Limpar anterior","btn.resetZoom":"Redefinir zoom","btn.play":"Reproduzir","btn.pause":"Pausar","btn.stop":"Parar","btn.close":"Fechar","btn.viewLicense":"Ver licença","compare.overlay":"Sobrepor execução anterior","charts.hint":"Mouse: mover = cursor exato sincronizado · roda = zoom · arrastar = panorâmica · clique duplo = redefinir zoom","chart.position":"Posição x(t) [mm]","chart.velocity":"Velocidade v(t) [mm/s]","chart.acceleration":"Aceleração a(t) [mm/s²]","chart.jerk":"Jerk j(t) [mm/s³]","chart.motion":"Movimento linear (animado a partir de x(t) exata)","label.speed":"Velocidade ×","label.repeat":"Repetir","spinner":"Calculando perfil de movimento exato…","footer.exact":"Propagação analítica exata e limites validados","control.language":"Idioma","control.theme":"Tema","theme.light":"Claro","theme.dark":"Escuro","about.description":"Simulador offline validado com cálculo S-curve exato e suporte a rampas lineares ideais quando o jerk é 0.","about.application":"Aplicativo","about.author":"Autor","about.version":"Versão","about.github":"GitHub","about.license":"Licença","license.title":"GNU General Public License v3","jerkGraph.impulseNote":"Os marcadores verticais ±∞ são impulsos ideais de jerk causados por mudanças instantâneas de aceleração quando um limite de jerk é 0.","metric.validation":"Validação","metric.profileMode":"Modo do perfil","metric.motionModel":"Modelo de movimento","metric.jerkMode":"Modo de entrada de jerk","metric.totalTime":"Tempo total","metric.distance":"Distância","metric.peakVelocity":"Velocidade de pico","metric.peakAccel":"Pico |aceleração|","metric.cruise":"Cruzeiro Tv","metric.finalVelocity":"Velocidade final","metric.distanceError":"Erro de distância","metric.points":"Pontos de saída","metric.accelPhase":"Fase de aceleração","metric.decelPhase":"Fase de desaceleração","model.scurve":"S-curve","model.trapezoidal":"Rampa linear / trapezoidal","model.hybrid":"S-curve / rampa linear híbrida","jerkMode.single":"Único","jerkMode.independent":"Independente","status.valid":"VÁLIDO","status.invalid":"INVÁLIDO","profile.vmaxCruise":"Vmax + cruzeiro","profile.vmaxNoCruise":"Vmax, sem cruzeiro","profile.reducedPeak":"Pico reduzido, sem cruzeiro","segment.1":"1 · Entrada jerk de aceleração","segment.2":"2 · Aceleração constante","segment.3":"3 · Saída jerk de aceleração","segment.4":"4 · Cruzeiro","segment.5":"5 · Entrada jerk de desaceleração","segment.6":"6 · Desaceleração constante","segment.7":"7 · Saída jerk de desaceleração","segment.end":"Fim","short.1":"J+a","short.2":"A constante","short.3":"J−a","short.4":"Cruzeiro","short.5":"J−d","short.6":"D constante","short.7":"J+d","segment.impulse":"impulso {sign}∞","segment.detail":"{time} s · j={jerk}","chart.noProfile":"Nenhum perfil. Execute uma simulação.","chart.max":"máx.","chart.min":"mín.","msg.reset":"Valores e perfis armazenados redefinidos.","msg.success":"Perfil exato gerado: {points} pontos de saída · erro de distância {error} mm{previous}.","msg.previousAvailable":" · execução anterior disponível para sobreposição","msg.error":"Erro de simulação: {detail}","msg.exportFirst":"Execute primeiro uma simulação para exportar CSV.","msg.previousCleared":"Perfil anterior de comparação removido.","msg.noStored":"Nenhum perfil armazenado.","err.distancePositive":"A distância S deve ser maior que 0.","err.finite":"{name} deve ser um número finito.","err.corePositive":"Vmax, Amax e Dmax devem ser maiores que 0.","err.jerkNonNegative":"Os limites de jerk devem ser 0 ou maiores.","err.boundaryNonNegative":"V0 e Vf devem ser 0 ou maiores.","err.vmaxBoundary":"Vmax deve ser maior ou igual a V0 e Vf.","err.vpeakBelow":"A velocidade de pico é menor que uma velocidade de limite.","err.vpeakAbove":"A velocidade de pico excede Vmax.","err.distanceTooShort":"A distância é curta demais para as velocidades de limite solicitadas. Distância mínima de transição: {distance} mm.","err.validation":"Falha na validação do perfil: {detail}","csv.zeroConvention":"0 desativa a suavização S-curve nessa transição; o impulso ideal de jerk é infinito no salto de aceleração."}};
+  let currentLang='en';
+  let currentTheme='dark';
+  let messageState=null;
   const byId = id => document.getElementById(id);
   const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
   const fmt = (v, d=3) => Number.isFinite(v) ? Number(v).toFixed(d) : '—';
 
-  function setMsg(html, cls='') {
-    const el = byId('msg');
-    el.className = cls;
-    el.innerHTML = html;
+  function tr(key, vars={}) {
+    const table=I18N[currentLang] || I18N.en;
+    let text=(table && table[key]) ?? I18N.en[key] ?? key;
+    return String(text).replace(/\{(\w+)\}/g,(_,name)=>Object.prototype.hasOwnProperty.call(vars,name)?String(vars[name]):`{${name}}`);
   }
+
+  function safeStorageGet(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+  function safeStorageSet(key,value) { try { localStorage.setItem(key,value); } catch (_) {} }
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function appError(key, vars={}) { const e=new Error(tr(key,vars)); e.i18nKey=key; e.i18nVars=vars; return e; }
+
+  function applyI18n() {
+    document.documentElement.lang=currentLang;
+    document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=tr(el.dataset.i18n); });
+    byId('languageSelect').value=currentLang;
+    byId('themeSelect').value=currentTheme;
+    document.title=`${APP_CONFIG.name} ${APP_CONFIG.version}`;
+    updateAbout();
+    renderMessage();
+    if (window.__lastProfile) showMetrics(window.__lastProfile);
+    updateToggleLabel();
+    updateJerkGraphNote();
+    redrawCharts();
+    resizeMotion();
+  }
+
+  function setLanguage(lang,persist=true) {
+    currentLang=Object.prototype.hasOwnProperty.call(I18N,lang)?lang:'en';
+    if (persist) safeStorageSet('JerkSimulator.language',currentLang);
+    applyI18n();
+  }
+
+  function setTheme(theme,persist=true) {
+    currentTheme=(theme==='light')?'light':'dark';
+    document.documentElement.dataset.theme=currentTheme;
+    if (persist) safeStorageSet('JerkSimulator.theme',currentTheme);
+    if (byId('themeSelect')) byId('themeSelect').value=currentTheme;
+    redrawCharts(); resizeMotion();
+  }
+
+  function updateAbout() {
+    if (!byId('aboutTitle')) return;
+    byId('aboutTitle').textContent=`${APP_CONFIG.name} ${APP_CONFIG.version}`;
+    byId('aboutDescription').textContent=tr('about.description');
+    byId('aboutApplication').textContent=APP_CONFIG.name;
+    byId('aboutAuthor').textContent=APP_CONFIG.author;
+    byId('aboutVersion').textContent=APP_CONFIG.version;
+    byId('aboutLicense').textContent=APP_CONFIG.license;
+    byId('aboutGithub').textContent=APP_CONFIG.github;
+    byId('aboutGithub').href=APP_CONFIG.github;
+  }
+
+  function setMessage(key, vars={}, cls='') { messageState={key,vars,cls}; renderMessage(); }
+  function renderMessage() {
+    const el=byId('msg'); if (!el) return;
+    if (!messageState) { el.className=''; el.textContent=''; return; }
+    el.className=messageState.cls || '';
+    el.textContent=messageState.key ? tr(messageState.key,messageState.vars) : (messageState.raw || '');
+  }
+
+  function scaledTol(...values) {
+    let scale = 1;
+    for (const value of values) {
+      if (Number.isFinite(value)) scale = Math.max(scale, Math.abs(value));
+    }
+    return NUMERIC_FACTOR * EPS * scale;
+  }
+
+  function distanceTol(distance) {
+    const scale=Math.max(1,Math.abs(distance));
+    return Math.max(1e-9, Math.abs(distance)*1e-12, 512*EPS*scale);
+  }
+
+  function closeEnough(a, b, absTol=1e-12, relTol=128*EPS) {
+    return Math.abs(a-b) <= absTol + relTol*Math.max(1,Math.abs(a),Math.abs(b));
+  }
+
+  function setMsg(text, cls='') { messageState={key:null,vars:{},cls,raw:String(text ?? '')}; const el=byId('msg'); el.className=cls; el.textContent=messageState.raw; }
 
   function setSpinner(on) { byId('spinner').classList.toggle('on', !!on); }
 
@@ -447,7 +1046,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Exact kinematics
+  // Cinemática exacta
   // For a constant jerk j over dt:
   //   a1 = a0 + j*dt
   //   v1 = v0 + a0*dt + 1/2*j*dt^2
@@ -466,99 +1065,76 @@
   }
 
   function accelTiming(deltaV, aMax, jUp, jDown) {
-    if (deltaV <= EPS) return {t1:0, t2:0, t3:0, peakA:0};
-    const invJ = (1/jUp) + (1/jDown);
-    const dvAtAmax = 0.5 * aMax * aMax * invJ;
-    if (deltaV <= dvAtAmax + EPS) {
-      const peakA = Math.sqrt(Math.max(0, 2*deltaV / invJ));
-      return { t1: peakA/jUp, t2:0, t3:peakA/jDown, peakA };
+    const zeroTolV=scaledTol(deltaV);
+    if (deltaV<=zeroTolV) return {t1:0,t2:0,t3:0,peakA:0,instantUp:false,instantDown:false};
+    const invJ=(jUp>0?1/jUp:0)+(jDown>0?1/jDown:0);
+    if (invJ===0) return {t1:0,t2:deltaV/aMax,t3:0,peakA:aMax,instantUp:true,instantDown:true};
+    const dvAtAmax=0.5*aMax*aMax*invJ;
+    const branchTolV=scaledTol(deltaV,dvAtAmax);
+    if (deltaV<=dvAtAmax+branchTolV) {
+      const peakA=Math.sqrt(Math.max(0,2*deltaV/invJ));
+      return {t1:jUp>0?peakA/jUp:0,t2:0,t3:jDown>0?peakA/jDown:0,peakA,instantUp:jUp===0,instantDown:jDown===0};
     }
-    return {
-      t1: aMax/jUp,
-      t2: Math.max(0, (deltaV - dvAtAmax)/aMax),
-      t3: aMax/jDown,
-      peakA: aMax
-    };
+    return {t1:jUp>0?aMax/jUp:0,t2:Math.max(0,(deltaV-dvAtAmax)/aMax),t3:jDown>0?aMax/jDown:0,peakA:aMax,instantUp:jUp===0,instantDown:jDown===0};
   }
 
   function decelTiming(deltaV, dMax, jIn, jOut) {
-    if (deltaV <= EPS) return {t1:0, t2:0, t3:0, peakD:0};
-    const invJ = (1/jIn) + (1/jOut);
-    const dvAtDmax = 0.5 * dMax * dMax * invJ;
-    if (deltaV <= dvAtDmax + EPS) {
-      const peakD = Math.sqrt(Math.max(0, 2*deltaV / invJ));
-      return { t1: peakD/jIn, t2:0, t3:peakD/jOut, peakD };
+    const zeroTolV=scaledTol(deltaV);
+    if (deltaV<=zeroTolV) return {t1:0,t2:0,t3:0,peakD:0,instantIn:false,instantOut:false};
+    const invJ=(jIn>0?1/jIn:0)+(jOut>0?1/jOut:0);
+    if (invJ===0) return {t1:0,t2:deltaV/dMax,t3:0,peakD:dMax,instantIn:true,instantOut:true};
+    const dvAtDmax=0.5*dMax*dMax*invJ;
+    const branchTolV=scaledTol(deltaV,dvAtDmax);
+    if (deltaV<=dvAtDmax+branchTolV) {
+      const peakD=Math.sqrt(Math.max(0,2*deltaV/invJ));
+      return {t1:jIn>0?peakD/jIn:0,t2:0,t3:jOut>0?peakD/jOut:0,peakD,instantIn:jIn===0,instantOut:jOut===0};
     }
-    return {
-      t1: dMax/jIn,
-      t2: Math.max(0, (deltaV - dvAtDmax)/dMax),
-      t3: dMax/jOut,
-      peakD: dMax
-    };
+    return {t1:jIn>0?dMax/jIn:0,t2:Math.max(0,(deltaV-dvAtDmax)/dMax),t3:jOut>0?dMax/jOut:0,peakD:dMax,instantIn:jIn===0,instantOut:jOut===0};
   }
 
-  const SEGMENT_NAMES = [
-    '1 · Accel jerk +',
-    '2 · Accel constant',
-    '3 · Accel jerk −',
-    '4 · Cruise',
-    '5 · Decel jerk −',
-    '6 · Decel constant',
-    '7 · Decel jerk +'
-  ];
+  const SEGMENT_KEYS=['segment.1','segment.2','segment.3','segment.4','segment.5','segment.6','segment.7'];
+  const SHORT_KEYS=['short.1','short.2','short.3','short.4','short.5','short.6','short.7'];
 
   function createSegmentDescriptors(vPeak, Tv, p) {
-    const acc = accelTiming(Math.max(0, vPeak - p.v0), p.aMax, p.j1, p.j2);
-    const dec = decelTiming(Math.max(0, vPeak - p.vf), p.dMax, p.j3, p.j4);
+    const minPeak=Math.max(p.v0,p.vf);
+    const lowerTolV=scaledTol(vPeak,minPeak)*8;
+    if (!Number.isFinite(vPeak) || vPeak<minPeak-lowerTolV) throw appError('err.vpeakBelow');
+    const upperTolV=scaledTol(vPeak,p.vMax)*8;
+    if (Number.isFinite(p.vMax) && vPeak>p.vMax+upperTolV) throw appError('err.vpeakAbove');
+    const acc=accelTiming(Math.max(0,vPeak-p.v0),p.aMax,p.j1,p.j2);
+    const dec=decelTiming(Math.max(0,vPeak-p.vf),p.dMax,p.j3,p.j4);
     return [
-      {name:SEGMENT_NAMES[0], short:'J+a', jerk:+p.j1, duration:acc.t1},
-      {name:SEGMENT_NAMES[1], short:'Aconst', jerk:0, duration:acc.t2},
-      {name:SEGMENT_NAMES[2], short:'J−a', jerk:-p.j2, duration:acc.t3},
-      {name:SEGMENT_NAMES[3], short:'Cruise', jerk:0, duration:Math.max(0,Tv)},
-      {name:SEGMENT_NAMES[4], short:'J−d', jerk:-p.j3, duration:dec.t1},
-      {name:SEGMENT_NAMES[5], short:'Dconst', jerk:0, duration:dec.t2},
-      {name:SEGMENT_NAMES[6], short:'J+d', jerk:+p.j4, duration:dec.t3}
+      {nameKey:SEGMENT_KEYS[0],shortKey:SHORT_KEYS[0],jerk:p.j1>0?+p.j1:0,duration:acc.t1,targetA:+acc.peakA,instantaneous:acc.instantUp,impulseSign:+1},
+      {nameKey:SEGMENT_KEYS[1],shortKey:SHORT_KEYS[1],jerk:0,duration:acc.t2,targetA:+acc.peakA,instantaneous:false,impulseSign:0},
+      {nameKey:SEGMENT_KEYS[2],shortKey:SHORT_KEYS[2],jerk:p.j2>0?-p.j2:0,duration:acc.t3,targetA:0,instantaneous:acc.instantDown,impulseSign:-1},
+      {nameKey:SEGMENT_KEYS[3],shortKey:SHORT_KEYS[3],jerk:0,duration:Math.max(0,Tv),targetA:0,instantaneous:false,impulseSign:0},
+      {nameKey:SEGMENT_KEYS[4],shortKey:SHORT_KEYS[4],jerk:p.j3>0?-p.j3:0,duration:dec.t1,targetA:-dec.peakD,instantaneous:dec.instantIn,impulseSign:-1},
+      {nameKey:SEGMENT_KEYS[5],shortKey:SHORT_KEYS[5],jerk:0,duration:dec.t2,targetA:-dec.peakD,instantaneous:false,impulseSign:0},
+      {nameKey:SEGMENT_KEYS[6],shortKey:SHORT_KEYS[6],jerk:p.j4>0?+p.j4:0,duration:dec.t3,targetA:0,instantaneous:dec.instantOut,impulseSign:+1}
     ];
   }
 
   function buildExactModel(vPeak, Tv, p) {
-    const desc = createSegmentDescriptors(vPeak, Tv, p);
-    const segments = [];
-    let state = {t:0, x:0, v:p.v0, a:0};
-
-    for (let i=0; i<desc.length; i++) {
-      const d = desc[i];
-      const start = {...state};
-      let end = propagate(start, d.jerk, d.duration);
-
-      // Snap only negligible floating-point residuals at known analytical boundaries.
-      if (Math.abs(end.a) < 1e-10) end.a = 0;
-      if (Math.abs(end.v) < 1e-10) end.v = 0;
-
-      segments.push({
-        index:i,
-        name:d.name,
-        short:d.short,
-        jerk:d.jerk,
-        duration:d.duration,
-        t0:start.t,
-        t1:end.t,
-        start,
-        end
-      });
-      state = end;
+    const desc=createSegmentDescriptors(vPeak,Tv,p);
+    const segments=[];
+    let state={t:0,x:0,v:p.v0,a:0};
+    for (let i=0;i<desc.length;i++) {
+      const d=desc[i];
+      const start={...state};
+      let end=propagate(start,d.jerk,d.duration);
+      // Una transición instantánea cambia solo la aceleración; x, v y t permanecen continuos.
+      if (d.instantaneous) end={...end,a:d.targetA};
+      else end.a=d.targetA;
+      // Estados analíticos conocidos en las fronteras principales.
+      if (i===2) end.v=vPeak;
+      if (i===3) {end.a=0;end.v=vPeak;}
+      if (i===6) {end.a=0;end.v=p.vf;}
+      segments.push({index:i,nameKey:d.nameKey,shortKey:d.shortKey,jerk:d.jerk,duration:d.duration,t0:start.t,t1:end.t,start,end,instantaneous:d.instantaneous,impulseSign:d.impulseSign,deltaA:end.a-start.a});
+      state=end;
     }
-
-    return {
-      segments,
-      tTotal:state.t,
-      xTotal:state.x,
-      vFinal:state.v,
-      aFinal:state.a,
-      vPeak,
-      Tv,
-      params:p
-    };
+    const zeroCount=[p.j1,p.j2,p.j3,p.j4].filter(j=>j===0).length;
+    const modelKey=zeroCount===4?'model.trapezoidal':(zeroCount>0?'model.hybrid':'model.scurve');
+    return {segments,tTotal:state.t,xTotal:state.x,vFinal:state.v,aFinal:state.a,vPeak,Tv,params:p,modelKey};
   }
 
   function transitionDistance(vPeak, p) {
@@ -567,29 +1143,40 @@
 
   function evaluateAtTime(profile, time) {
     if (!profile || !profile.segments || !profile.segments.length) {
-      return {t:0,x:0,v:0,a:0,j:0,segmentIndex:0,segmentName:''};
+      return {t:0,x:0,v:0,a:0,j:0,segmentIndex:0,segmentKey:'segment.end'};
     }
+
     const t = clamp(time, 0, profile.tTotal);
     const segs = profile.segments;
-    let idx = segs.length - 1;
 
-    if (t < profile.tTotal - EPS) {
-      for (let i=0; i<segs.length; i++) {
-        if (t < segs[i].t1 - EPS || i === segs.length-1) { idx = i; break; }
-      }
+    // Convention: internal boundaries are right-continuous (the segment beginning
+    // at t_i owns t_i). At the final endpoint the motion has ended, so jerk = 0.
+    if (t >= profile.tTotal) {
+      const last = segs[segs.length-1];
+      return {
+        t:profile.tTotal,
+        x:last.end.x,
+        v:last.end.v,
+        a:last.end.a,
+        j:0,
+        segmentIndex:last.index,
+        segmentKey:'segment.end'
+      };
     }
 
+    let idx = 0;
+    while (idx < segs.length-1 && t >= segs[idx].t1) idx++;
     const seg = segs[idx];
     const local = clamp(t - seg.t0, 0, seg.duration);
-    const s = propagate(seg.start, seg.jerk, local);
+    const s = local === 0 ? seg.start : propagate(seg.start, seg.jerk, local);
     return {
       t,
       x:s.x,
       v:s.v,
       a:s.a,
-      j:(t >= profile.tTotal - EPS) ? 0 : seg.jerk,
+      j:seg.jerk,
       segmentIndex:idx,
-      segmentName:seg.name
+      segmentKey:seg.nameKey
     };
   }
 
@@ -598,17 +1185,32 @@
     const times = [];
     const total = profile.tTotal;
 
+    if (!(total > 0)) {
+      const s = evaluateAtTime(profile,0);
+      return {T:[0],X:[s.x],V:[s.v],A:[s.a],J:[0],SEG:[s.segmentIndex+1]};
+    }
+
+    // Global sampling keeps the entire motion uniformly inspectable.
     for (let i=0; i<=n; i++) times.push(total * i / n);
+
+    // Structural/adaptive samples guarantee that even very short non-zero
+    // segments remain curved when zoomed, independent of their fraction of total time.
+    const MIN_SEGMENT_SUBDIVISIONS = 12;
     for (const seg of profile.segments) {
       times.push(seg.t0, seg.t1);
-      if (seg.duration > 0) times.push(0.5*(seg.t0+seg.t1));
+      if (seg.duration > 0) {
+        for (let k=1; k<MIN_SEGMENT_SUBDIVISIONS; k++) {
+          times.push(seg.t0 + seg.duration*k/MIN_SEGMENT_SUBDIVISIONS);
+        }
+      }
     }
 
     times.sort((a,b) => a-b);
     const unique = [];
-    const tol = Math.max(1e-12, total*1e-12);
     for (const t of times) {
-      if (!unique.length || Math.abs(t - unique[unique.length-1]) > tol) unique.push(t);
+      // Exact duplicates occur naturally because one segment's t1 is the next t0.
+      // Do not merge merely "nearby" structural times: tiny segments are meaningful.
+      if (!unique.length || t !== unique[unique.length-1]) unique.push(t);
     }
 
     const T=[], X=[], V=[], A=[], J=[], SEG=[];
@@ -620,75 +1222,154 @@
   }
 
   function calculatePeaks(profile) {
-    let vPeak = -Infinity;
-    let aAbsPeak = 0;
-    let aMaxUsed = -Infinity;
-    let aMinUsed = Infinity;
+    let vMaxUsed = -Infinity, vMinUsed = Infinity;
+    let aAbsPeak = 0, aMaxUsed = -Infinity, aMinUsed = Infinity;
+
+    function consider(s) {
+      if (s.v > vMaxUsed) vMaxUsed = s.v;
+      if (s.v < vMinUsed) vMinUsed = s.v;
+      if (s.a > aMaxUsed) aMaxUsed = s.a;
+      if (s.a < aMinUsed) aMinUsed = s.a;
+      const aa = Math.abs(s.a);
+      if (aa > aAbsPeak) aAbsPeak = aa;
+    }
+
     for (const seg of profile.segments) {
-      for (const s of [seg.start, seg.end]) {
-        if (s.v > vPeak) vPeak = s.v;
-        if (s.a > aMaxUsed) aMaxUsed = s.a;
-        if (s.a < aMinUsed) aMinUsed = s.a;
-        const aa = Math.abs(s.a);
-        if (aa > aAbsPeak) aAbsPeak = aa;
+      consider(seg.start);
+      consider(seg.end);
+
+      // Velocity extrema can also occur inside a constant-jerk segment where a(t)=0.
+      if (seg.jerk !== 0) {
+        const tc = -seg.start.a / seg.jerk;
+        if (tc > 0 && tc < seg.duration) consider(propagate(seg.start,seg.jerk,tc));
       }
     }
+
     return {
-      vPeak:Number.isFinite(vPeak) ? vPeak : 0,
+      vPeak:Number.isFinite(vMaxUsed) ? vMaxUsed : 0,
+      vMin:Number.isFinite(vMinUsed) ? vMinUsed : 0,
       aAbsPeak,
       aMaxUsed:Number.isFinite(aMaxUsed) ? aMaxUsed : 0,
       aMinUsed:Number.isFinite(aMinUsed) ? aMinUsed : 0
     };
   }
 
+  function validateProfile(profile, targetDistance) {
+    const p=profile.params;
+    const errors=[];
+    const dTol=Math.max(distanceTol(targetDistance), 2*(profile.solverDistanceResolution||0));
+    const vTol=scaledTol(p.vMax,p.v0,p.vf,profile.vPeak)*8;
+    const aTol=scaledTol(p.aMax,p.dMax)*8;
+    const jTol=scaledTol(p.j1,p.j2,p.j3,p.j4)*8;
+
+    if (!Number.isFinite(profile.xTotal) || Math.abs(profile.xTotal-targetDistance)>dTol) {
+      errors.push(`distance residual ${profile.xTotal-targetDistance} mm exceeds tolerance ${dTol} mm`);
+    }
+    if (!closeEnough(profile.vFinal,p.vf,vTol,128*EPS)) errors.push(`final velocity ${profile.vFinal} != Vf ${p.vf}`);
+    if (!closeEnough(profile.aFinal,0,aTol,128*EPS)) errors.push(`final acceleration ${profile.aFinal} != 0`);
+    if (profile.peaks.vMin < -vTol) errors.push(`negative velocity ${profile.peaks.vMin} mm/s`);
+    if (profile.peaks.vPeak > p.vMax + vTol) errors.push(`velocity limit exceeded: ${profile.peaks.vPeak} > ${p.vMax}`);
+    if (profile.peaks.aMaxUsed > p.aMax + aTol) errors.push(`acceleration limit exceeded: ${profile.peaks.aMaxUsed} > ${p.aMax}`);
+    if (profile.peaks.aMinUsed < -p.dMax - aTol) errors.push(`deceleration limit exceeded: ${profile.peaks.aMinUsed} < ${-p.dMax}`);
+
+    const expectedJ=[+p.j1,0,-p.j2,0,-p.j3,0,+p.j4];
+    for (let i=0;i<profile.segments.length;i++) {
+      const seg=profile.segments[i];
+      if (!closeEnough(seg.jerk,expectedJ[i],jTol,128*EPS)) errors.push(`segment ${i+1} jerk mismatch`);
+      if (i>0) {
+        const prev=profile.segments[i-1];
+        if (!closeEnough(prev.end.t,seg.start.t,scaledTol(profile.tTotal)*8,128*EPS) ||
+            !closeEnough(prev.end.x,seg.start.x,dTol,128*EPS) ||
+            !closeEnough(prev.end.v,seg.start.v,vTol,128*EPS) ||
+            !closeEnough(prev.end.a,seg.start.a,aTol,128*EPS)) {
+          errors.push(`state discontinuity between segments ${i} and ${i+1}`);
+        }
+      }
+    }
+
+    return {valid:errors.length===0,status:errors.length===0?'VALID':'INVALID',errors,distanceTolerance:dTol};
+  }
+
   function solveExactProfile(S, p, sampleCount) {
+    if (!Number.isFinite(S) || S<=0) throw appError('err.distancePositive');
+    for (const k of ['vMax','aMax','dMax','j1','j2','j3','j4','v0','vf']) {
+      if (!Number.isFinite(p[k])) throw appError('err.finite',{name:k});
+    }
+    if (!(p.vMax>0 && p.aMax>0 && p.dMax>0)) throw appError('err.corePositive');
+    if ([p.j1,p.j2,p.j3,p.j4].some(j=>j<0)) throw appError('err.jerkNonNegative');
+    if (p.v0<0 || p.vf<0) throw appError('err.boundaryNonNegative');
+
     const minPeak = Math.max(p.v0, p.vf);
-    if (p.vMax < minPeak - 1e-9) {
-      throw new Error(`Vmax (${fmt(p.vMax,3)} mm/s) must be ≥ both V0 and Vf.`);
+    const tolVel = scaledTol(p.vMax,p.v0,p.vf)*8;
+    if (p.vMax < minPeak - tolVel) {
+      throw appError('err.vmaxBoundary');
     }
 
     const dMin = transitionDistance(minPeak, p);
     const dAtVmax = transitionDistance(p.vMax, p);
-    const tolDist = Math.max(1e-9, Math.abs(S)*1e-12);
+    const tolDist = distanceTol(S);
 
     if (S < dMin - tolDist) {
-      throw new Error(`Distance is too short for the requested boundary velocities under the configured limits. Minimum feasible transition distance is ${fmt(dMin,6)} mm.`);
+      throw appError('err.distanceTooShort',{distance:fmt(dMin,9)});
     }
 
     let vTarget = p.vMax;
     let Tv = 0;
-    let mode = '';
+    let modeKey='';
 
     if (dAtVmax < S - tolDist) {
       Tv = (S - dAtVmax) / p.vMax;
-      mode = 'Vmax + cruise';
+      modeKey='profile.vmaxCruise';
     } else if (Math.abs(dAtVmax - S) <= tolDist) {
-      mode = 'Vmax, no cruise';
+      modeKey='profile.vmaxNoCruise';
     } else {
       let lo = minPeak;
       let hi = p.vMax;
+      let exactMid = null;
       for (let it=0; it<80; it++) {
         const mid = 0.5*(lo+hi);
+        if (mid===lo || mid===hi) break;
         const d = transitionDistance(mid, p);
-        if (d > S) hi = mid; else lo = mid;
+        const residual = d-S;
+        if (Math.abs(residual) <= tolDist*0.25) { exactMid=mid; break; }
+        if (residual > 0) hi = mid; else lo = mid;
       }
-      vTarget = 0.5*(lo+hi);
+      vTarget = exactMid ?? 0.5*(lo+hi);
       Tv = 0;
-      mode = 'Reduced peak, no cruise';
+      modeKey='profile.reducedPeak';
     }
 
     const profile = buildExactModel(vTarget, Tv, p);
     profile.S = S;
-    profile.mode = mode;
+    profile.modeKey=modeKey;
     profile.sampleCountRequested = clamp(Math.round(sampleCount), 200, 5000);
-    profile.sample = sampleProfile(profile, profile.sampleCountRequested);
     profile.peaks = calculatePeaks(profile);
     profile.distanceError = profile.xTotal - S;
+
+    // In reduced-peak solutions, the distance-vs-velocity mapping can be very
+    // ill-conditioned. Estimate the smallest representable distance change caused
+    // by one floating-point velocity step and include it in the validation tolerance.
+    profile.solverDistanceResolution=0;
+    if (modeKey==='profile.reducedPeak') {
+      const dv=EPS*Math.max(1,Math.abs(vTarget));
+      const vLo=Math.max(minPeak,vTarget-dv);
+      const vHi=Math.min(p.vMax,vTarget+dv);
+      const d0=profile.xTotal;
+      const dLo=transitionDistance(vLo,p);
+      const dHi=transitionDistance(vHi,p);
+      profile.solverDistanceResolution=Math.max(Math.abs(d0-dLo),Math.abs(dHi-d0));
+    }
+
+    profile.validation = validateProfile(profile,S);
+    if (!profile.validation.valid) {
+      throw appError('err.validation',{detail:profile.validation.errors.join('; ')});
+    }
+    profile.sample = sampleProfile(profile, profile.sampleCountRequested);
     return profile;
   }
 
   // ---------------------------------------------------------------------------
-  // Charts
+  // Gráficas
   // ---------------------------------------------------------------------------
   const chartDefs = [
     {id:'chartX', key:'X', stateKey:'x', unit:'mm', color:'#79c0ff', step:false},
@@ -777,6 +1458,50 @@
     ctx.restore();
   }
 
+  function drawAccelerationProfile(ctx, profile, geom, color, dashed) {
+    if (!profile) return;
+    const {padL,padT,w,h,tMin,tMax,yMin,yMax}=geom;
+    const xPx=t=>padL+((t-tMin)/(tMax-tMin))*w;
+    const yPx=y=>padT+(1-(y-yMin)/(yMax-yMin))*h;
+    ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=dashed?1.4:2; ctx.globalAlpha=dashed?.62:1; ctx.setLineDash(dashed?[7,5]:[]);
+    for (const seg of profile.segments) {
+      if (seg.instantaneous && seg.t0>=tMin && seg.t0<=tMax && seg.start.a!==seg.end.a) line(ctx,xPx(seg.t0),yPx(seg.start.a),xPx(seg.t0),yPx(seg.end.a));
+      if (seg.duration>0) {
+        const a=Math.max(seg.t0,tMin), b=Math.min(seg.t1,tMax);
+        if (b>=a) {
+          const sa=propagate(seg.start,seg.jerk,a-seg.t0), sb=propagate(seg.start,seg.jerk,b-seg.t0);
+          line(ctx,xPx(a),yPx(sa.a),xPx(b),yPx(sb.a));
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawJerkProfile(ctx, profile, geom, color, dashed) {
+    if (!profile) return;
+    const {padL,padT,w,h,tMin,tMax,yMin,yMax}=geom;
+    const xPx=t=>padL+((t-tMin)/(tMax-tMin))*w;
+    const yPx=y=>padT+(1-(y-yMin)/(yMax-yMin))*h;
+    ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=dashed?1.4:2; ctx.globalAlpha=dashed?.62:1; ctx.setLineDash(dashed?[7,5]:[]);
+    let previousActive=null;
+    for (const seg of profile.segments) {
+      if (seg.duration>0) {
+        if (previousActive && seg.t0>=tMin && seg.t0<=tMax && previousActive.t1===seg.t0 && previousActive.jerk!==seg.jerk) line(ctx,xPx(seg.t0),yPx(previousActive.jerk),xPx(seg.t0),yPx(seg.jerk));
+        const a=Math.max(seg.t0,tMin),b=Math.min(seg.t1,tMax); if (b>=a) line(ctx,xPx(a),yPx(seg.jerk),xPx(b),yPx(seg.jerk));
+        previousActive=seg;
+      }
+      if (seg.instantaneous && seg.t0>=tMin && seg.t0<=tMax) {
+        const x=xPx(seg.t0), y0=yPx(0), top=padT+12, bottom=padT+h-12, yt=seg.impulseSign>0?top:bottom;
+        ctx.setLineDash([]); line(ctx,x,y0,x,yt);
+        ctx.beginPath();
+        if (seg.impulseSign>0) {ctx.moveTo(x,top-1);ctx.lineTo(x-4,top+7);ctx.lineTo(x+4,top+7);} else {ctx.moveTo(x,bottom+1);ctx.lineTo(x-4,bottom-7);ctx.lineTo(x+4,bottom-7);} ctx.closePath();ctx.fill();
+        ctx.font='bold 11px system-ui'; ctx.fillText(seg.impulseSign>0?'+∞':'−∞',x+5,seg.impulseSign>0?top+10:bottom-4);
+        ctx.setLineDash(dashed?[7,5]:[]);
+      }
+    }
+    ctx.restore();
+  }
+
   function drawSeries(def) {
     const canvas = byId(def.id);
     const ctx = canvas.getContext('2d');
@@ -787,14 +1512,14 @@
 
     const W = canvas.clientWidth;
     const H = canvas.clientHeight;
-    ctx.fillStyle = '#0a0f16';
+    ctx.fillStyle=cssVar('--surface');
     ctx.fillRect(0,0,W,H);
 
     const profile = window.__lastProfile || null;
     if (!profile || !profile.sample || profile.sample.T.length < 2) {
-      ctx.fillStyle = '#9ab0c0';
+      ctx.fillStyle=cssVar('--text-muted');
       ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto';
-      ctx.fillText('No profile. Run a simulation.', 48, 32);
+      ctx.fillText(tr('chart.noProfile'),48,32);
       canvas.__plotGeom = null;
       return;
     }
@@ -834,13 +1559,13 @@
     const yPx = y => padT + (1-(y-yMin)/(yMax-yMin))*h;
 
     // Grid and axes.
-    ctx.strokeStyle = '#1e2633';
+    ctx.strokeStyle=cssVar('--shadow-dark');
     ctx.lineWidth = 1;
     const gridX=6, gridY=4;
     for (let i=0;i<=gridX;i++) line(ctx,padL+w*i/gridX,padT,padL+w*i/gridX,padT+h);
     for (let i=0;i<=gridY;i++) line(ctx,padL,padT+h*i/gridY,padL+w,padT+h*i/gridY);
 
-    ctx.fillStyle = '#9ab0c0';
+    ctx.fillStyle=cssVar('--text-muted');
     ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto';
     for (let i=0;i<=gridX;i++) {
       const tt=tMin+(tMax-tMin)*i/gridX;
@@ -855,8 +1580,8 @@
     ctx.save();
     ctx.setLineDash([4,4]);
     ctx.lineWidth=1;
-    ctx.strokeStyle='#465670';
-    ctx.fillStyle='#9ab0c0';
+    ctx.strokeStyle=cssVar('--text-muted');
+    ctx.fillStyle=cssVar('--text-muted');
     ctx.font='10px system-ui, -apple-system, Segoe UI, Roboto';
     for (const r of refs) {
       if (r.value < yMin || r.value > yMax) continue;
@@ -868,8 +1593,8 @@
 
     // Seven segment boundaries + labels.
     ctx.save();
-    ctx.strokeStyle='#33425b';
-    ctx.fillStyle='#7288a1';
+    ctx.strokeStyle=cssVar('--accent-dark');
+    ctx.fillStyle=cssVar('--text-muted');
     ctx.font='9px system-ui, -apple-system, Segoe UI, Roboto';
     ctx.lineWidth=1;
     ctx.setLineDash([2,4]);
@@ -880,25 +1605,32 @@
         if (mid>=tMin && mid<=tMax) {
           const px=xPx(mid);
           const pxDur=(seg.duration/(tMax-tMin))*w;
-          if (pxDur>34) ctx.fillText(seg.short, px-12, 13);
+          if (pxDur>34) ctx.fillText(tr(seg.shortKey),px-12,13);
         }
       }
     }
     ctx.restore();
 
-    // Previous run first, then current run.
-    if (compareProfile && compareProfile.sample) {
-      drawPolyline(ctx,compareProfile.sample,def.key,geom,'#8392a8',true,def.step);
+    // Previous run first, then current run. Jerk is rendered directly from
+    // analytical segments so discontinuities are exact and never interpolated.
+    if (def.key==='J') {
+      if (compareProfile) drawJerkProfile(ctx,compareProfile,geom,cssVar('--text-muted'),true);
+      drawJerkProfile(ctx,profile,geom,def.color,false);
+    } else if (def.key==='A') {
+      if (compareProfile) drawAccelerationProfile(ctx,compareProfile,geom,cssVar('--text-muted'),true);
+      drawAccelerationProfile(ctx,profile,geom,def.color,false);
+    } else {
+      if (compareProfile && compareProfile.sample) drawPolyline(ctx,compareProfile.sample,def.key,geom,cssVar('--text-muted'),true,false);
+      drawPolyline(ctx,profile.sample,def.key,geom,def.color,false,false);
     }
-    drawPolyline(ctx,profile.sample,def.key,geom,def.color,false,def.step);
 
     // Visible current min/max badges, computed with loops (no spread operator).
     if (cur.found) {
-      ctx.fillStyle='#9ab0c0';
+      ctx.fillStyle=cssVar('--text-muted');
       ctx.font='10px system-ui, -apple-system, Segoe UI, Roboto';
       ctx.textAlign='right';
-      ctx.fillText(`max ${fmt(cur.max,3)} ${def.unit}`, W-18, H-17);
-      ctx.fillText(`min ${fmt(cur.min,3)} ${def.unit}`, W-18, H-5);
+      ctx.fillText(`${tr('chart.max')} ${fmt(cur.max,3)} ${def.unit}`,W-18,H-17);
+      ctx.fillText(`${tr('chart.min')} ${fmt(cur.min,3)} ${def.unit}`,W-18,H-5);
       ctx.textAlign='left';
     }
 
@@ -908,7 +1640,7 @@
       const val=state[def.stateKey];
       const cx=xPx(view.cursor), cy=yPx(val);
       ctx.save();
-      ctx.strokeStyle='#d8e6f3';
+      ctx.strokeStyle=cssVar('--text');
       ctx.globalAlpha=.65;
       ctx.setLineDash([3,3]);
       line(ctx,cx,padT,cx,padT+h);
@@ -917,7 +1649,7 @@
 
       const text1=`t ${fmt(state.t,6)} s`;
       const text2=`${def.key.toLowerCase()} ${fmt(val,6)} ${def.unit}`;
-      const text3=state.segmentName;
+      const text3=tr(state.segmentKey || 'segment.end');
       ctx.font='11px system-ui, -apple-system, Segoe UI, Roboto';
       const boxW=Math.max(ctx.measureText(text1).width,ctx.measureText(text2).width,ctx.measureText(text3).width)+16;
       const boxH=50;
@@ -925,20 +1657,27 @@
       if (bx+boxW>W-5) bx=cx-boxW-8;
       bx=clamp(bx,padL+2,W-boxW-4);
       const by=padT+5;
-      ctx.fillStyle='rgba(12,18,26,.94)';
-      ctx.strokeStyle='#33425b';
+      ctx.fillStyle=cssVar('--surface');
+      ctx.strokeStyle=cssVar('--accent-dark');
       ctx.fillRect(bx,by,boxW,boxH);
       ctx.strokeRect(bx,by,boxW,boxH);
-      ctx.fillStyle='#e6eef7';
+      ctx.fillStyle=cssVar('--text');
       ctx.fillText(text1,bx+8,by+14);
       ctx.fillText(text2,bx+8,by+29);
-      ctx.fillStyle='#9ab0c0';
+      ctx.fillStyle=cssVar('--text-muted');
       ctx.fillText(text3,bx+8,by+44);
       ctx.restore();
     }
   }
 
   function redrawCharts() { for (const def of chartDefs) drawSeries(def); }
+
+  let redrawPending=false;
+  function requestChartRedraw() {
+    if (redrawPending) return;
+    redrawPending=true;
+    requestAnimationFrame(() => { redrawPending=false; redrawCharts(); });
+  }
 
   function resetZoom() {
     view.tMin=0; view.tMax=null; view.cursor=null;
@@ -962,18 +1701,18 @@
         nmin=clamp(nmin,0,Math.max(0,total-span));
         view.tMin=nmin; view.tMax=nmin+span;
         view.cursor=null;
-        redrawCharts();
+        requestChartRedraw();
         return;
       }
 
       if (x>=g.padL && x<=g.padL+g.w) {
         view.cursor=g.tMin+((x-g.padL)/g.w)*(g.tMax-g.tMin);
-        redrawCharts();
+        requestChartRedraw();
       }
     });
 
     canvas.addEventListener('mouseleave', () => {
-      if (!view.dragging) { view.cursor=null; redrawCharts(); }
+      if (!view.dragging) { view.cursor=null; requestChartRedraw(); }
     });
 
     canvas.addEventListener('mousedown', e => {
@@ -1004,7 +1743,7 @@
       nmin=clamp(nmin,0,Math.max(0,total-newSpan));
       view.tMin=nmin; view.tMax=nmin+newSpan;
       view.cursor=anchor;
-      redrawCharts();
+      requestChartRedraw();
     }, {passive:false});
 
     canvas.addEventListener('dblclick', resetZoom);
@@ -1016,35 +1755,72 @@
   });
 
   // ---------------------------------------------------------------------------
-  // UI metrics and CSV
+  // Métricas de interfaz y CSV
   // ---------------------------------------------------------------------------
   function kv(k,v) { return `<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
 
-  function showMetrics(p) {
-    byId('metrics').innerHTML =
-      kv('Profile mode', p.mode) +
-      kv('Jerk mode', p.params && p.params.jerkMode==='independent' ? 'Independent' : 'Single') +
-      kv('Total time', fmt(p.tTotal,6)+' s') +
-      kv('Distance', fmt(p.xTotal,6)+' mm') +
-      kv('Peak velocity', fmt(p.peaks.vPeak,6)+' mm/s') +
-      kv('Peak |accel|', fmt(p.peaks.aAbsPeak,6)+' mm/s²') +
-      kv('Cruise Tv', fmt(p.Tv,6)+' s') +
-      kv('Final velocity', fmt(p.vFinal,6)+' mm/s') +
-      kv('Distance error', fmt(p.distanceError,9)+' mm') +
-      kv('Output points', String(p.sample.T.length));
+  function updateJerkGraphNote() {
+    const p=window.__lastProfile; const hasImpulse=!!(p && p.segments.some(s=>s.instantaneous));
+    byId('jerkGraphNote').hidden=!hasImpulse;
+  }
 
-    byId('segmentSummary').innerHTML = p.segments.map(seg =>
-      `<div class="segment-chip"><div class="n">${seg.name}</div><div class="d">${fmt(seg.duration,6)} s · j=${fmt(seg.jerk,2)}</div></div>`
-    ).join('');
+  function showMetrics(p) {
+    byId('metrics').innerHTML=
+      kv(tr('metric.validation'),p.validation&&p.validation.valid?tr('status.valid'):tr('status.invalid'))+
+      kv(tr('metric.profileMode'),tr(p.modeKey))+
+      kv(tr('metric.motionModel'),tr(p.modelKey))+
+      kv(tr('metric.jerkMode'),tr(p.params&&p.params.jerkMode==='independent'?'jerkMode.independent':'jerkMode.single'))+
+      kv(tr('metric.totalTime'),fmt(p.tTotal,2)+' s')+
+      kv(tr('metric.accelPhase'),fmt(p.segments[0].duration+p.segments[1].duration+p.segments[2].duration,2)+' s')+
+      kv(tr('metric.decelPhase'),fmt(p.segments[4].duration+p.segments[5].duration+p.segments[6].duration,2)+' s')+
+      kv(tr('metric.distance'),fmt(p.xTotal,2)+' mm')+
+      kv(tr('metric.peakVelocity'),fmt(p.peaks.vPeak,2)+' mm/s')+kv(tr('metric.peakAccel'),fmt(p.peaks.aAbsPeak,2)+' mm/s²')+
+      kv(tr('metric.cruise'),fmt(p.Tv,2)+' s')+kv(tr('metric.finalVelocity'),fmt(p.vFinal,2)+' mm/s')+
+      kv(tr('metric.distanceError'),fmt(p.distanceError,2)+' mm')+kv(tr('metric.points'),String(p.sample.T.length));
+    byId('segmentSummary').innerHTML=p.segments.map(seg=>{
+      const detail=seg.instantaneous?tr('segment.impulse',{sign:seg.impulseSign>0?'+':'−'}):tr('segment.detail',{time:fmt(seg.duration,2),jerk:fmt(seg.jerk,2)});
+      return `<div class="segment-chip"><div class="n">${tr(seg.nameKey)}</div><div class="d">${detail}</div></div>`;
+    }).join('');
+    updateJerkGraphNote();
+  }
+
+  function csvNumber(value) {
+    return Number.isFinite(value) ? Number(value).toPrecision(17) : '';
   }
 
   function toCSV(profile) {
     const s=profile.sample;
-    let out='t[s],x[mm],v[mm/s],a[mm/s^2],j[mm/s^3],segment\n';
+    const p=profile.params;
+    const rows=[
+      `# ${APP_CONFIG.name},${APP_CONFIG.version}`,
+      `# motion_model,${profile.modelKey}`,
+      `# jerk_zero_convention,${tr('csv.zeroConvention').replace(/,/g,';')}`, 
+      `# validation,${profile.validation ? profile.validation.status : 'UNKNOWN'}`,
+      `# profile_mode,${profile.modeKey}`, 
+      `# jerk_mode,${p.jerkMode || 'single'}`,
+      `# distance_target_mm,${csvNumber(profile.S)}`,
+      `# v0_mm_s,${csvNumber(p.v0)}`,
+      `# vf_mm_s,${csvNumber(p.vf)}`,
+      `# vmax_mm_s,${csvNumber(p.vMax)}`,
+      `# amax_mm_s2,${csvNumber(p.aMax)}`,
+      `# dmax_mm_s2,${csvNumber(p.dMax)}`,
+      `# j1_mm_s3,${csvNumber(p.j1)}`,
+      `# j2_mm_s3,${csvNumber(p.j2)}`,
+      `# j3_mm_s3,${csvNumber(p.j3)}`,
+      `# j4_mm_s3,${csvNumber(p.j4)}`,
+      `# total_time_s,${csvNumber(profile.tTotal)}`,
+      `# acceleration_phase_time_s,${csvNumber(profile.segments[0].duration+profile.segments[1].duration+profile.segments[2].duration)}`,
+      `# deceleration_phase_time_s,${csvNumber(profile.segments[4].duration+profile.segments[5].duration+profile.segments[6].duration)}`,
+      `# cruise_time_s,${csvNumber(profile.Tv)}`,
+      `# distance_error_mm,${csvNumber(profile.distanceError)}`
+    ];
+    for (const seg of profile.segments) { rows.push(`# segment_${seg.index+1}_duration_s,${csvNumber(seg.duration)}`); if(seg.instantaneous) rows.push(`# impulse_${seg.index+1}_time_s,${csvNumber(seg.t0)},delta_a_mm_s2,${csvNumber(seg.deltaA)},ideal_jerk,${seg.impulseSign>0?'+Infinity':'-Infinity'}`); }
+    rows.push('');
+    rows.push('t[s],x[mm],v[mm/s],a[mm/s^2],j[mm/s^3],segment');
     for (let i=0;i<s.T.length;i++) {
-      out += `${fmt(s.T[i],9)},${fmt(s.X[i],9)},${fmt(s.V[i],9)},${fmt(s.A[i],9)},${fmt(s.J[i],9)},${s.SEG[i]}\n`;
+      rows.push(`${csvNumber(s.T[i])},${csvNumber(s.X[i])},${csvNumber(s.V[i])},${csvNumber(s.A[i])},${csvNumber(s.J[i])},${s.SEG[i]}`);
     }
-    return out;
+    return rows.join('\n')+'\n';
   }
 
   function getJerkMode() {
@@ -1087,13 +1863,15 @@
       samples:Number(byId('inSamples').value)
     };
 
-    const positive=['vMax','aMax','dMax','j1','j2','j3','j4'];
-    if (!Number.isFinite(values.S) || values.S<=0) throw new Error('Distance S must be > 0.');
+    const positive=['vMax','aMax','dMax'];
+    if (!Number.isFinite(values.S)||values.S<=0) throw appError('err.distancePositive');
+    if (values.vMax<Math.max(values.v0,values.vf)-scaledTol(values.vMax,values.v0,values.vf)*8) throw appError('err.vmaxBoundary');
     for (const k of positive) {
-      if (!Number.isFinite(values[k]) || values[k]<=0) throw new Error(`${k} must be > 0.`);
+      if (!Number.isFinite(values[k])||values[k]<=0) throw appError('err.corePositive');
     }
+    for (const k of ['j1','j2','j3','j4']) { if (!Number.isFinite(values[k])||values[k]<0) throw appError('err.jerkNonNegative'); }
     if (!Number.isFinite(values.v0) || values.v0<0 || !Number.isFinite(values.vf) || values.vf<0) {
-      throw new Error('V0 and Vf must be finite values ≥ 0.');
+      throw appError('err.boundaryNonNegative');
     }
     if (!Number.isFinite(values.samples)) values.samples=1200;
     values.samples=clamp(Math.round(values.samples),200,5000);
@@ -1102,9 +1880,9 @@
   }
 
   async function run() {
-    setMsg('');
+    messageState=null; renderMessage();
     setSpinner(true);
-    await Promise.resolve(); // allow spinner paint before synchronous exact solve
+    await Promise.resolve(); // Permite que el navegador pinte el indicador antes del cálculo síncrono.
     try {
       const u=readInputs();
       const p={
@@ -1115,7 +1893,7 @@
       };
       const next=solveExactProfile(u.S,p,u.samples);
 
-      // Comparison state is captured before replacing the active profile.
+      // Conserva la corrida anterior antes de sustituir el perfil activo.
       window.__previousProfile=window.__lastProfile || null;
       window.__lastProfile=next;
 
@@ -1123,12 +1901,12 @@
       resetZoom();
       syncAnimationWithProfile();
 
-      const previousNote=window.__previousProfile ? ' · previous run available for overlay' : '';
-      setMsg(`Exact profile generated: ${next.sample.T.length} plotted/exported points · physical distance error ${fmt(Math.abs(next.distanceError),9)} mm${previousNote}.`, 'ok');
+      const previous=window.__previousProfile?tr('msg.previousAvailable'):'';
+      setMessage('msg.success',{points:next.sample.T.length,error:fmt(Math.abs(next.distanceError),2),previous},'ok');
       return next;
     } catch (err) {
       console.error(err);
-      setMsg('Simulation error: '+err.message,'err');
+      setMessage('msg.error',{detail:err.message},'err');
       return null;
     } finally {
       setSpinner(false);
@@ -1145,35 +1923,36 @@
   }
 
   function resetUI() {
-    byId('inDist').value=5000;
-    byId('inVmax').value=1500;
-    byId('inAmax').value=1000;
-    byId('inDmax').value=1000;
-    byId('inJmax').value=2000;
+    byId('inDist').value=2000;
+    byId('inVmax').value=500;
+    byId('inAmax').value=300;
+    byId('inDmax').value=300;
+    byId('inJmax').value=500;
     byId('jerkModeSingle').checked=true;
     byId('jerkModeIndependent').checked=false;
-    byId('inJ1').value=2000;
-    byId('inJ2').value=2000;
-    byId('inJ3').value=2000;
-    byId('inJ4').value=2000;
+    byId('inJ1').value=500;
+    byId('inJ2').value=500;
+    byId('inJ3').value=500;
+    byId('inJ4').value=500;
     updateJerkModeUI(true);
     byId('inV0').value=0;
     byId('inVf').value=0;
-    byId('inSamples').value=1200;
+    byId('inSamples').value=1000;
     byId('metrics').innerHTML='';
     byId('segmentSummary').innerHTML='';
+    byId('boundaryDetails').open=false;
     clearAllState();
-    setMsg('Values and stored profiles reset.','');
+    setMessage('msg.reset',{},'');
     redrawCharts();
     resizeMotion();
   }
 
   // ---------------------------------------------------------------------------
-  // Exact animation
+  // Animación exacta
   // ---------------------------------------------------------------------------
   const motionCanvas=byId('motionCanvas');
   const btnToggle=byId('btnToggle');
-  const anim={running:false,t:0,last:null,speed:1,profile:null,rafId:null};
+  const anim={running:false,t:0,speed:1,profile:null,rafId:null,anchorReal:null,anchorT:0,lastFrameReal:null};
 
   function drawMotion(state) {
     const ctx=motionCanvas.getContext('2d');
@@ -1183,23 +1962,23 @@
     ctx.setTransform(dpr,0,0,dpr,0,0);
 
     const W=motionCanvas.clientWidth,H=motionCanvas.clientHeight;
-    ctx.fillStyle='#0a0f16'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=cssVar('--surface');ctx.fillRect(0,0,W,H);
     const padL=48,padR=16,padT=18,padB=28;
     const y=Math.round((padT+(H-padB))/2),x0=padL,x1=W-padR;
-    ctx.strokeStyle='#1e2633';ctx.lineWidth=3;line(ctx,x0,y,x1,y);
+    ctx.strokeStyle=cssVar('--shadow-dark');ctx.lineWidth=3;line(ctx,x0,y,x1,y);
 
     const profile=anim.profile;
     const S=profile ? profile.S : 0;
     const st=state || {t:0,x:0,v:0};
-    ctx.fillStyle='#9ab0c0';ctx.font='12px system-ui, -apple-system, Segoe UI, Roboto';
+    ctx.fillStyle=cssVar('--text-muted');ctx.font='12px system-ui, -apple-system, Segoe UI, Roboto';
     ctx.fillText('0 mm',x0-10,y+17);
     ctx.fillText(`${fmt(S,0)} mm`,Math.max(x0,x1-54),y+17);
     ctx.fillText(`t=${fmt(st.t,3)} s · x=${fmt(st.x,3)} mm · v=${fmt(st.v,3)} mm/s`,padL,14);
 
     const frac=S>0 ? clamp(st.x/S,0,1) : 0;
     const cx=x0+frac*(x1-x0);
-    ctx.beginPath();ctx.arc(cx,y,10,0,Math.PI*2);ctx.fillStyle='#3aa0ff';ctx.fill();
-    ctx.lineWidth=2;ctx.strokeStyle='#233048';ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,y,10,0,Math.PI*2);ctx.fillStyle=cssVar('--accent');ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle=cssVar('--accent-dark');ctx.stroke();
   }
 
   function updateAnimationReadout(state) {
@@ -1211,19 +1990,33 @@
 
   function animationStep(now) {
     if (!anim.running) return;
-    if (anim.last==null) anim.last=now;
-    const dt=(now-anim.last)/1000*anim.speed;
-    anim.last=now;
     const p=anim.profile;
     if (!p) { anim.running=false; updateToggleLabel(); return; }
 
-    anim.t=Math.min(anim.t+dt,p.tTotal);
+    if (anim.anchorReal==null) {
+      anim.anchorReal=now;
+      anim.anchorT=anim.t;
+      anim.lastFrameReal=now;
+    }
+
+    // Si el renderizado se suspende por una pestaña en segundo plano o una pausa larga,
+    // conserva el cabezal visual actual para evitar saltos grandes al regresar.
+    if (anim.lastFrameReal!=null && now-anim.lastFrameReal>250) {
+      anim.anchorReal=now;
+      anim.anchorT=anim.t;
+    }
+    anim.lastFrameReal=now;
+
+    anim.t=Math.min(anim.anchorT+(now-anim.anchorReal)/1000*anim.speed,p.tTotal);
     const st=evaluateAtTime(p,anim.t);
     drawMotion(st); updateAnimationReadout(st);
 
-    if (anim.t>=p.tTotal-EPS) {
+    if (anim.t>=p.tTotal) {
       if (byId('chkRepeat').checked) {
-        anim.t=0;anim.last=now;
+        anim.t=0;
+        anim.anchorT=0;
+        anim.anchorReal=now;
+        anim.lastFrameReal=now;
       } else {
         anim.running=false;anim.rafId=null;updateToggleLabel();return;
       }
@@ -1237,21 +2030,28 @@
       if (!result) return;
     }
     anim.profile=window.__lastProfile;
-    if (anim.t>=anim.profile.tTotal-EPS) anim.t=0;
+    if (anim.t>=anim.profile.tTotal) anim.t=0;
     if (!anim.running) {
-      anim.running=true;anim.last=null;anim.rafId=requestAnimationFrame(animationStep);
+      anim.running=true;
+      anim.anchorT=anim.t;
+      anim.anchorReal=performance.now();
+      anim.lastFrameReal=anim.anchorReal;
+      anim.rafId=requestAnimationFrame(animationStep);
     }
   }
 
   function pauseAnimation() {
     anim.running=false;
     if (anim.rafId!=null) cancelAnimationFrame(anim.rafId);
-    anim.rafId=null;anim.last=null;
+    anim.rafId=null;
+    anim.anchorReal=null;
+    anim.lastFrameReal=null;
   }
 
   function stopAnimation() {
     pauseAnimation();
     anim.t=0;
+    anim.anchorT=0;
     const st=anim.profile ? evaluateAtTime(anim.profile,0) : {t:0,x:0,v:0};
     drawMotion(st);updateAnimationReadout(st);updateToggleLabel();
   }
@@ -1269,10 +2069,11 @@
     drawMotion(st);updateAnimationReadout(st);
   }
 
-  function updateToggleLabel() { btnToggle.textContent=anim.running ? 'Pause' : 'Play'; }
+  function updateToggleLabel(){btnToggle.textContent=tr(anim.running?'btn.pause':'btn.play');}
 
   // ---------------------------------------------------------------------------
-  // Events
+  // Eventos de interfaz
+  // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
   for (const def of chartDefs) attachChartInteractions(byId(def.id));
 
@@ -1283,23 +2084,24 @@
   });
 
   byId('btnRun').addEventListener('click',run);
-  byId('btnReset').addEventListener('click',resetUI);
+  byId('btnReset').addEventListener('click',async()=>{resetUI();await run();});
   byId('btnResetZoom').addEventListener('click',resetZoom);
+  byId('btnPrintPDF').addEventListener('click',()=>window.print());
   byId('chkCompare').addEventListener('change',redrawCharts);
   byId('btnClearCompare').addEventListener('click',() => {
     window.__previousProfile=null;
     byId('chkCompare').checked=false;
     redrawCharts();
-    setMsg(window.__lastProfile ? 'Previous comparison profile cleared.' : 'No stored profiles.','');
+    setMessage(window.__lastProfile?'msg.previousCleared':'msg.noStored',{},'');
   });
 
   byId('btnCSV').addEventListener('click',() => {
     const p=window.__lastProfile;
-    if (!p) { setMsg('Run a simulation first to export CSV.','warn'); return; }
+    if (!p) { setMessage('msg.exportFirst',{},'warn'); return; }
     const blob=new Blob([toCSV(p)],{type:'text/csv;charset=utf-8;'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download='jerk_profile_exact_mm_s.csv';
+    a.href=url;a.download='JerkSimulator_profile.csv';
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),0);
   });
@@ -1310,33 +2112,56 @@
   });
   byId('btnStop').addEventListener('click',stopAnimation);
   byId('speed').addEventListener('input',e => {
+    const now=performance.now();
+    if (anim.running && anim.anchorReal!=null) {
+      anim.t=Math.min(anim.anchorT+(now-anim.anchorReal)/1000*anim.speed,anim.profile.tTotal);
+      anim.anchorT=anim.t;
+      anim.anchorReal=now;
+      anim.lastFrameReal=now;
+    }
     anim.speed=parseFloat(e.target.value)||1;
     byId('speedVal').textContent=fmt(anim.speed,2);
   });
 
-  window.addEventListener('resize',() => { redrawCharts(); resizeMotion(); });
-
-  const dlg=byId('aboutDialog');
-  byId('btnAboutCard').addEventListener('click',()=>dlg.showModal());
-  byId('aboutClose').addEventListener('click',()=>dlg.close());
-  dlg.addEventListener('click',e => {
-    const rect=dlg.getBoundingClientRect();
-    const inside=e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom;
-    if (!inside) dlg.close();
+  document.addEventListener('visibilitychange',() => {
+    if (!document.hidden && anim.running) {
+      const now=performance.now();
+      anim.anchorT=anim.t; anim.anchorReal=now; anim.lastFrameReal=now;
+    }
   });
 
+  window.addEventListener('resize',() => { requestChartRedraw(); resizeMotion(); });
+
+  byId('languageSelect').addEventListener('change',e=>setLanguage(e.target.value,true));
+  byId('themeSelect').addEventListener('change',e=>setTheme(e.target.value,true));
+
+  const dlg=byId('aboutDialog'), licenseDlg=byId('licenseDialog');
+  byId('btnAboutCard').addEventListener('click',()=>{updateAbout();dlg.showModal();});
+  byId('aboutClose').addEventListener('click',()=>dlg.close());
+  byId('btnViewLicense').addEventListener('click',()=>{byId('licenseText').textContent=byId('gpl3-full-license').textContent.trim();dlg.close();licenseDlg.showModal();});
+  byId('licenseClose').addEventListener('click',()=>licenseDlg.close());
+  for (const modal of [dlg,licenseDlg]) modal.addEventListener('click',e=>{const r=modal.getBoundingClientRect();if(!(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom))modal.close();});
+
+  // Hooks públicos para pruebas de regresión del núcleo.
   // Public test hooks kept intentionally small; useful for browser console regression tests.
   window.JerkSimulatorCore={
     propagate,accelTiming,decelTiming,buildExactModel,transitionDistance,
-    evaluateAtTime,sampleProfile,solveExactProfile,toCSV,
+    evaluateAtTime,sampleProfile,calculatePeaks,validateProfile,solveExactProfile,toCSV,csvNumber,
+    scaledTol,distanceTol,closeEnough,
     getJerkMode,copySingleJerkToIndependent,updateJerkModeUI,readInputs
   };
 
-  // Initial state.
+  // Estado inicial y preferencias persistentes.
   window.__lastProfile=null;
   window.__previousProfile=null;
-  updateToggleLabel();
+  currentLang=Object.prototype.hasOwnProperty.call(I18N,safeStorageGet('JerkSimulator.language'))?safeStorageGet('JerkSimulator.language'):'en';
+  currentTheme=safeStorageGet('JerkSimulator.theme')==='light'?'light':'dark';
+  document.documentElement.dataset.theme=currentTheme;
+  byId('languageSelect').value=currentLang; byId('themeSelect').value=currentTheme;
+  byId('licenseText').textContent=byId('gpl3-full-license').textContent.trim();
   resetUI();
+  applyI18n();
+  run();
 })();
 </script>
 </body>
